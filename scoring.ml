@@ -49,22 +49,29 @@ let line_to_athlete_row str =
 
 type date = { y:int ; m:int ; d:int }
 
-let strig_to_date str =
-  let [y;m;d] = List.map int_of_string (Str.split (Str.regexp "/+") str ) in
+let string_to_date str =
+  let [y;m;d] = List.map int_of_string (Str.split (Str.regexp "-+") str ) in
   {y=y;m=m;d=d}
 
+let date_diff d1 d2 =
+  (d2.y-d1.y)*30*12 + (d2.m-d1.m)*30 + (d2.d-d1.d)
 
 type race_header = { name:string; date:date; points:int }
 
-(* let read_header in_chan = *)
+let read_header in_channel =
+  let name = (input_line in_channel) in
+  let date = string_to_date (input_line in_channel) in
+  let _ = (input_line in_channel) in
+  let points = int_of_string (input_line in_channel) in
+  { name = name ; date =date ; points = points }
 
 let fread fn =
   let ic = open_in fn in
   try
     let
-      line = input_line ic
+      header = read_header ic
     in
-      print_endline line;
+      print_endline header.name;
       flush stdout;
       close_in ic
   with e ->
