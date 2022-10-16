@@ -47,7 +47,16 @@ let line_to_athlete_row str =
   with
     | _ -> None
 
+type date = { y:int ; m:int ; d:int }
 
+let strig_to_date str =
+  let [y;m;d] = List.map int_of_string (Str.split (Str.regexp "/+") str ) in
+  {y=y;m=m;d=d}
+
+
+type race_header = { name:string; date:date; points:int }
+
+(* let read_header in_chan = *)
 
 let fread fn =
   let ic = open_in fn in
