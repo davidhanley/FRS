@@ -58,18 +58,26 @@ let date_diff d1 d2 =
 
 type race_header = { name:string; date:date; points:int }
 
-let read_header in_channel =
-  let name = (input_line in_channel) in
-  let date = string_to_date (input_line in_channel) in
-  let _ = (input_line in_channel) in
-  let points = int_of_string (input_line in_channel) in
-  { name = name ; date =date ; points = points }
+let read_header nextline =
+  let name = nextline() in
+  let date = string_to_date (nextline()) in
+  let _ = nextline() in
+  let points = int_of_string (nextline()) in
+  { name = name ; date = date ; points = points }
+
+let rec read_rest nextline =
+  try
+    let ath = line_to_athlete_row (nextline ()) in
+      ath::(read_rest nextline)
+   with
+      | _ -> []
 
 let fread fn =
   let ic = open_in fn in
+  let nextline () = (input_line ic) in
   try
     let
-      header = read_header ic
+      header = read_header nextline
     in
       print_endline header.name;
       flush stdout;
