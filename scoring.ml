@@ -50,8 +50,9 @@ let line_to_athlete_row str =
 type date = { y:int ; m:int ; d:int }
 
 let string_to_date str =
-  let [y;m;d] = List.map int_of_string (Str.split (Str.regexp "-+") str ) in
-  {y=y;m=m;d=d}
+  let parts = List.map int_of_string (Str.split (Str.regexp "-+") str ) in
+  let n i = List.nth parts i in
+  { y = n 0; m = n 1 ; d = n 2 }
 
 let date_diff d1 d2 =
   (d2.y-d1.y)*30*12 + (d2.m-d1.m)*30 + (d2.d-d1.d)
