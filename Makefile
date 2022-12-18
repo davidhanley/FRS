@@ -1,6 +1,6 @@
 
 scoring : scoring.ml
-	ocamlfind ocamlc -package eliom.server str.cma -thread scoring.ml
+	ocamlc str.cma scoring.ml
 
 clean:
 	rm *.cmi *.cmo

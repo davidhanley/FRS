@@ -1,5 +1,4 @@
 
-
 open Str
 open Char
 
@@ -35,24 +34,23 @@ let string_to_gender str =
     | 'F' -> Some(F)
     | _ -> None
 
-
 let line_to_athlete_row str =
-  try
-    let ss = Str.split (Str.regexp ",+") str in
+    let ss = Str.split (Str.regexp ",") str in
     let le idx = List.nth ss idx in
     let s = string_to_gender (le 3) and
       a = string_to_int_option (le 2)
     in
+
       match s with
         | Some(gt) -> Some({name = (le 1) ; sex = gt ; age = a })
         | None     -> None
-  with
-    | _ -> None
+
+let () = assert ((line_to_athlete_row "1,WAI CHING SOH,,M,10:44:00 AM") = Some {name = "WAI CHING SOH" ; sex = M ; age = None })
 
 type date = { y:int ; m:int ; d:int }
 
 let string_to_date str =
-  let parts = List.map int_of_string (Str.split (Str.regexp "-+") str ) in
+  let parts = List.map int_of_string (Str.split (Str.regexp "-+") str) in
   let n i = List.nth parts i in
   { y = n 0; m = n 1 ; d = n 2 }
 
@@ -77,23 +75,28 @@ let rec read_rest nextline  =
    with
       | _ -> []
 
-let fread fn =
+type unscored_race = { header: race_header; athletes:athrow list}
+
+let read_a_race fn =
   let ic = open_in fn in
   let nextline () = (input_line ic) in
   try
     let header = read_header nextline and
         lines = read_rest nextline in
-      print_endline header.name;
       List.iter (fun (t:athrow) -> print_endline t.name) lines;
       flush stdout;
-      close_in ic
+      close_in ic;
+      [ { header = header; athletes = lines }]
   with _ ->
-    close_in_noerr ic
+    close_in_noerr ic;
+    []
+
+let esbru = read_a_race "data/2022-esbru.csv";;
 
 let foo =
-  let res = dir_contents "data" in
-  let _ = List.map fread res in
-      ()
+  let files = dir_contents "data" in
+  let races = List.flatten (List.map read_a_race files) in
+  races
 
-let () = foo
+
 
