@@ -1,3 +1,5 @@
+
+
 open Str
 open Char
 
@@ -66,10 +68,12 @@ let read_header nextline =
   let points = int_of_string (nextline()) in
   { name = name ; date = date ; points = points }
 
-let rec read_rest nextline =
+let rec read_rest nextline  =
   try
     let ath = line_to_athlete_row (nextline ()) in
-      ath::(read_rest nextline)
+      match ath with
+        | Some(a) -> a::(read_rest nextline)
+        | None    -> (read_rest nextline)
    with
       | _ -> []
 
@@ -77,20 +81,19 @@ let fread fn =
   let ic = open_in fn in
   let nextline () = (input_line ic) in
   try
-    let
-      header = read_header nextline
-    in
+    let header = read_header nextline and
+        lines = read_rest nextline in
       print_endline header.name;
+      List.iter (fun (t:athrow) -> print_endline t.name) lines;
       flush stdout;
       close_in ic
-  with e ->
+  with _ ->
     close_in_noerr ic
 
 let foo =
   let res = dir_contents "data" in
   let _ = List.map fread res in
       ()
-
 
 let () = foo
 
