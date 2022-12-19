@@ -1,4 +1,3 @@
-
 open Str
 open Char
 
@@ -34,18 +33,21 @@ let string_to_gender str =
     | 'F' -> Some(F)
     | _ -> None
 
+let split_on_commas str = Str.split_delim (Str.regexp ",") str
+
 let line_to_athlete_row str =
-    let ss = Str.split (Str.regexp ",") str in
+    let ss = split_on_commas str in
     let le idx = List.nth ss idx in
     let s = string_to_gender (le 3) and
       a = string_to_int_option (le 2)
     in
-
       match s with
         | Some(gt) -> Some({name = (le 1) ; sex = gt ; age = a })
         | None     -> None
 
+(*
 let () = assert ((line_to_athlete_row "1,WAI CHING SOH,,M,10:44:00 AM") = Some {name = "WAI CHING SOH" ; sex = M ; age = None })
+*)
 
 type date = { y:int ; m:int ; d:int }
 
@@ -83,15 +85,12 @@ let read_a_race fn =
   try
     let header = read_header nextline and
         lines = read_rest nextline in
-      List.iter (fun (t:athrow) -> print_endline t.name) lines;
       flush stdout;
       close_in ic;
       [ { header = header; athletes = lines }]
   with _ ->
     close_in_noerr ic;
     []
-
-let esbru = read_a_race "data/2022-esbru.csv";;
 
 let foo =
   let files = dir_contents "data" in
