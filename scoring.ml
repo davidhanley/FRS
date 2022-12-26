@@ -17,9 +17,7 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option }
-
-let ar = { name = "dave" ; sex = M ; age = Some 49 }
+type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool}
 
 let string_to_int_option str =
   try
@@ -33,16 +31,21 @@ let string_to_gender str =
     | 'F' -> Some(F)
     | _ -> None
 
+let string_to_gender_and_foreign str =
+  match str.[0] with
+    | '*' -> (true, string_to_gender (Str.string_after str 1))
+    | _   -> (false, string_to_gender str)
+
 let split_on_commas str = Str.split_delim (Str.regexp ",") str
 
 let line_to_athlete_row str =
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
-    let s = string_to_gender (le 3) and
+    let (foreign,gender_option) = string_to_gender_and_foreign (le 3) and
       a = string_to_int_option (le 2)
     in
-      match s with
-        | Some(gt) -> Some({name = (le 1) ; sex = gt ; age = a })
+      match gender_option with
+        | Some(gender) -> Some({name = (le 1) ; sex = gender ; age = a ; foreign = foreign})
         | None     -> None
 
 (*
