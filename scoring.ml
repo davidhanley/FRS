@@ -1,5 +1,6 @@
 open Str
 open Char
+open Option
 
 (* string -> string list *)
 let dir_contents dir =
@@ -48,7 +49,7 @@ let line_to_athlete_row str =
       a = string_to_int_option (le 2)
     in
       match gender_option with
-        | Some(gender) -> [{name = (le 1) ; sex = gender ; age = a ; foreign = foreign}]
+        | Some(gender) -> [{name = String.uppercase_ascii (le 1) ; sex = gender ; age = a ; foreign = foreign}]
         | None     -> []
   with _ -> []
 
@@ -104,16 +105,33 @@ let read_a_race fn =
         athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) in
       List.map (fun a->(a, header)) athletes
 
+let compare_athletes (a1:athrow) (a2:athrow) =
+  let r = String.compare a1.name a2.name in
+  if r <> 0 then r else
+    match (a1.age,a2.age) with
+    | (None,None) -> 0
+    | (Some(_),None) -> -1
+    | (None,Some(_)) -> 1
+    | (Some(age1),Some(age2)) -> age2-age1
 
-let foo () =
+let sort_athletes (results:(((athrow * int) * race_header) list)) =
+   List.sort (fun ((a1,_),_) ((a2,_),_)-> compare_athletes a1 a2) results
+
+let load_races_into_chunked_athletes () =
   let files = dir_contents "data" in
   let results = List.concat (List.map read_a_race files) in
-  results
+  let sorted_results = sort_athletes results in
+  sorted_results
+
+let age_option_to_string age_option =
+  match age_option with
+  | Some(age) -> string_of_int age
+  | None -> "N/A"
 
 let () =
-  let wrath = foo () in
+  let wrath = load_races_into_chunked_athletes () in
   List.iter (fun (((ath:athrow), idx), header) ->
-              Printf.printf "%s %d %s\n" ath.name idx header.name) wrath;
+              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) idx header.name) wrath;
   ()
 
 
