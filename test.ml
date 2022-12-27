@@ -12,10 +12,10 @@ let parsed = line_to_athlete_row ",david hanley,49,M,silly"
 
 let test1 () =
   match parsed with
-    | Some(pr) -> assert (pr.name = "david hanley");
+    | [pr] -> assert (pr.name = "david hanley");
                   assert (pr.sex = M);
                   assert (pr.age = Some 49)
-    | None -> assert false
+    | [] -> assert false
 
 let test_gender () =
   assert ((string_to_gender_and_foreign "*M") = (true, Some M));
@@ -23,7 +23,7 @@ let test_gender () =
   assert ((string_to_gender_and_foreign "f") = (false, Some F));
   assert ((string_to_gender_and_foreign "m") = (false, Some M))
 
-let () = test1();
+let () = test1()  ;
          test_split();
          test_gender()
 

@@ -32,21 +32,25 @@ let string_to_gender str =
     | _ -> None
 
 let string_to_gender_and_foreign str =
-  match str.[0] with
-    | '*' -> (true, string_to_gender (Str.string_after str 1))
-    | _   -> (false, string_to_gender str)
+  try
+    match str.[0] with
+      | '*' -> (true, string_to_gender (Str.string_after str 1))
+      | _   -> (false, string_to_gender str)
+  with _ -> (false, None)
 
 let split_on_commas str = Str.split_delim (Str.regexp ",") str
 
 let line_to_athlete_row str =
+  try
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
     let (foreign,gender_option) = string_to_gender_and_foreign (le 3) and
       a = string_to_int_option (le 2)
     in
       match gender_option with
-        | Some(gender) -> Some({name = (le 1) ; sex = gender ; age = a ; foreign = foreign})
-        | None     -> None
+        | Some(gender) -> [{name = (le 1) ; sex = gender ; age = a ; foreign = foreign}]
+        | None     -> []
+  with _ -> []
 
 (*
 let () = assert ((line_to_athlete_row "1,WAI CHING SOH,,M,10:44:00 AM") = Some {name = "WAI CHING SOH" ; sex = M ; age = None })
@@ -64,41 +68,54 @@ let date_diff d1 d2 =
 
 type race_header = { name:string; date:date; points:int }
 
-let read_header nextline =
-  let name = nextline() in
-  let date = string_to_date (nextline()) in
-  let _ = nextline() in
-  let points = int_of_string (nextline()) in
+let read_header lines =
+  let name :: d :: _ :: p :: _ = lines in
+  (* Printf.printf "name:%s date:%s points:%s.\n" name d p; *)
+  let date = string_to_date d in
+  let points = int_of_string p in
   { name = name ; date = date ; points = points }
 
-let rec read_rest nextline  =
-  try
-    let ath = line_to_athlete_row (nextline ()) in
-      match ath with
-        | Some(a) -> a::(read_rest nextline)
-        | None    -> (read_rest nextline)
-   with
-      | _ -> []
+let get_incer() =
+  let index = ref 0 in
+  let incer () = index := !index + 1; !index in
+  incer
 
-type unscored_race = { header: race_header; athletes:athrow list}
+let read_athletes lines =
+  let jaggedy = List.concat (List.map line_to_athlete_row lines) in
+  let incer = get_incer() in
+  List.map (fun a->(a,incer())) jaggedy
+
+let file_to_strings fn =
+  let inf = open_in fn in
+   let rec reader acc =
+      try
+        let line = input_line inf in
+        reader (line::acc)
+      with _ ->
+        close_in_noerr inf;
+        acc
+    in
+      List.rev (reader [])
 
 let read_a_race fn =
-  let ic = open_in fn in
-  let nextline () = (input_line ic) in
-  try
-    let header = read_header nextline and
-        lines = read_rest nextline in
-      flush stdout;
-      close_in ic;
-      [ { header = header; athletes = lines }]
-  with _ ->
-    close_in_noerr ic;
-    []
+  Printf.printf "Reading.. %s\n" fn;
+  let lines = file_to_strings fn in
+    let header = read_header lines and
+        athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) in
+      List.map (fun a->(a, header)) athletes
 
-let foo =
+
+let foo () =
   let files = dir_contents "data" in
-  let races = List.flatten (List.map read_a_race files) in
-  races
+  let results = List.concat (List.map read_a_race files) in
+  results
+
+let () =
+  let wrath = foo () in
+  List.iter (fun (((ath:athrow), idx), header) ->
+              Printf.printf "%s %d %s\n" ath.name idx header.name) wrath;
+  ()
+
 
 
 
