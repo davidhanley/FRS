@@ -70,16 +70,23 @@ let date_diff d1 d2 =
 type race_header = { name:string; date:date; points:int }
 
 let read_header lines =
-  let name :: d :: _ :: p :: _ = lines in
-  (* Printf.printf "name:%s date:%s points:%s.\n" name d p; *)
-  let date = string_to_date d in
-  let points = int_of_string p in
-  { name = name ; date = date ; points = points }
+  match lines with
+  | name :: d :: _ :: p :: _ ->
+    (* Printf.printf "name:%s date:%s points:%s.\n" name d p; *)
+    let date = string_to_date d in
+    let points = int_of_string p in
+    { name = name ; date = date ; points = points }
+  | _ -> raise Exit
 
 let get_incer() =
   let index = ref 0 in
   let incer () = index := !index + 1; !index in
   incer
+
+let get_score_iterator base_score =
+  let incer = get_incer() in
+  let float_base = (float_of_int base_score) in
+  fun ()-> float_base *. 5.0 /. (4.0 +. (float_of_int (incer ())))
 
 let read_athletes lines =
   let jaggedy = List.concat (List.map line_to_athlete_row lines) in
@@ -110,9 +117,10 @@ let compare_athletes (a1:athrow) (a2:athrow) =
   if r <> 0 then r else
     match (a1.age,a2.age) with
     | (None,None) -> 0
-    | (Some(_),None) -> -1
-    | (None,Some(_)) -> 1
-    | (Some(age1),Some(age2)) -> age2-age1
+    | (Some(_),None) -> 1
+    | (None,Some(_)) -> -1
+    | (Some(age1),Some(age2)) -> age1-age2
+
 
 let sort_athletes (results:(((athrow * int) * race_header) list)) =
    List.sort (fun ((a1,_),_) ((a2,_),_)-> compare_athletes a1 a2) results
@@ -128,11 +136,16 @@ let age_option_to_string age_option =
   | Some(age) -> string_of_int age
   | None -> "N/A"
 
+let print_athletes wrath =
+  Printf.printf "-----------------------\n";
+  List.iter (fun (((ath:athrow), idx), header) ->
+                              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) idx header.name) wrath
+
+let print_partitioned wrath = List.map print_athletes wrath
+
 let () =
   let wrath = load_races_into_chunked_athletes () in
-  List.iter (fun (((ath:athrow), idx), header) ->
-              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) idx header.name) wrath;
-  ()
+  print_athletes wrath
 
 
 
