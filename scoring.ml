@@ -105,12 +105,15 @@ let file_to_strings fn =
     in
       List.rev (reader [])
 
+
+type athete_packet = { athlete: athrow ; position: int; header: race_header }
+
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
   let lines = file_to_strings fn in
     let header = read_header lines and
         athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) in
-      List.map (fun a->(a, header)) athletes
+      List.map (fun (ath,idx)->{athlete = ath; position=idx; header=header}) athletes
 
 let compare_athletes (a1:athrow) (a2:athrow) =
   let r = String.compare a1.name a2.name in
@@ -122,8 +125,9 @@ let compare_athletes (a1:athrow) (a2:athrow) =
     | (Some(age1),Some(age2)) -> age1-age2
 
 
-let sort_athletes (results:(((athrow * int) * race_header) list)) =
-   List.sort (fun ((a1,_),_) ((a2,_),_)-> compare_athletes a1 a2) results
+
+let sort_athletes (results:athete_packet list) =
+   List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents "data" in
@@ -136,16 +140,35 @@ let age_option_to_string age_option =
   | Some(age) -> string_of_int age
   | None -> "N/A"
 
-let print_athletes wrath =
+let print_athletes (wrath:athete_packet list) =
   Printf.printf "-----------------------\n";
-  List.iter (fun (((ath:athrow), idx), header) ->
-                              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) idx header.name) wrath
+  List.iter (fun athl -> let ath = athl.athlete in
+                              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) athl.position athl.header.name) wrath
 
 let print_partitioned wrath = List.map print_athletes wrath
 
+let age_match ao1 ao2 =
+ match (ao1,ao2) with
+ | (None,_) -> true
+ | (_,None) -> true
+ | (Some(a1),Some(a2)) -> (Int.abs (a2-a1)) < 2
+
+let ath_match ao1 ao2 =
+  (age_match ao1.age ao2.age) && (ao1.name = ao2.name)
+
+let group_athletes (alist:athete_packet list) =
+ let rec grouper (lst:athete_packet list) acc out =
+   match (lst,acc) with
+   | ([],[]) -> out
+   | ([],_) -> acc::out
+   | a::rest,[] -> grouper rest [a] out
+   | a::rest,aa::restaa -> if (ath_match a.athlete aa.athlete) then grouper rest (a::acc) out else grouper rest [a] (acc::out) in
+ grouper alist [] []
+
 let () =
   let wrath = load_races_into_chunked_athletes () in
-  print_athletes wrath
+  print_partitioned (group_athletes wrath);
+  ()
 
 
 
