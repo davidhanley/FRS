@@ -14,7 +14,7 @@ let dir_contents dir =
     | f::fs -> loop (f::result) fs
     | []    -> result
   in
-    loop [] [dir]
+    List.filter (String.ends_with ~suffix:".csv") (loop [] [dir])
 
 type gender = M | F
 
@@ -41,6 +41,29 @@ let string_to_gender_and_foreign str =
 
 let split_on_commas str = Str.split_delim (Str.regexp ",") str
 
+let file_to_strings fn =
+  let inf = open_in fn in
+   let rec reader acc =
+      try
+        let line = input_line inf in
+        reader (line::acc)
+      with _ ->
+        close_in_noerr inf;
+        acc
+    in
+      List.rev (reader [])
+
+
+let load_name_translator () =
+  let lines = List.map split_on_commas (file_to_strings "data/translate.dat") in
+  let translate_table = List.map (fun [p;v]->Str.regexp_case_fold p,v) lines in
+  (fun name -> let rr = List.filter (fun (p,_)->Str.string_match p name 0) translate_table in
+    match rr with
+      | [] -> name
+      | (_,n)::_ -> n )
+
+let translator = load_name_translator()
+
 let line_to_athlete_row str =
   try
     let ss = split_on_commas str in
@@ -49,7 +72,7 @@ let line_to_athlete_row str =
       a = string_to_int_option (le 2)
     in
       match gender_option with
-        | Some(gender) -> [{name = String.uppercase_ascii (le 1) ; sex = gender ; age = a ; foreign = foreign}]
+        | Some(gender) -> [{name = String.uppercase_ascii (translator (le 1)) ; sex = gender ; age = a ; foreign = foreign}]
         | None     -> []
   with _ -> []
 
@@ -93,18 +116,6 @@ let read_athletes lines =
   let incer = get_incer() in
   List.map (fun a->(a,incer())) jaggedy
 
-let file_to_strings fn =
-  let inf = open_in fn in
-   let rec reader acc =
-      try
-        let line = input_line inf in
-        reader (line::acc)
-      with _ ->
-        close_in_noerr inf;
-        acc
-    in
-      List.rev (reader [])
-
 
 type athete_packet = { athlete: athrow ; position: int; header: race_header }
 
@@ -123,8 +134,6 @@ let compare_athletes (a1:athrow) (a2:athrow) =
     | (Some(_),None) -> 1
     | (None,Some(_)) -> -1
     | (Some(age1),Some(age2)) -> age1-age2
-
-
 
 let sort_athletes (results:athete_packet list) =
    List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
