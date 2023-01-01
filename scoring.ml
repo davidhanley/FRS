@@ -21,7 +21,7 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool}
+type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int}
 
 let string_to_int_option str =
   try
@@ -59,11 +59,11 @@ let file_to_strings fn =
 
 let load_name_translator () =
   let lines = List.map split_on_commas (file_to_strings "data/translate.dat") in
-  let translate_table = List.map (fun [p;v]->Str.regexp_case_fold p,v) lines in
-  (fun name -> let rr = List.filter (fun (p,_)->Str.string_match p name 0) translate_table in
+  let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
+  (fun name -> let rr = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match rr with
-      | [] -> name
-      | (_,n)::_ -> n )
+      | None -> name
+      | Some (_,n) -> n )
 
 let translator = load_name_translator()
 
@@ -71,11 +71,11 @@ let load_foreign_lookup () =
   let lines = file_to_strings "data/foreign.dat" in
   let upcased_lines = List.map String.uppercase_ascii lines in
   let stringset = StringSet.of_seq (List.to_seq upcased_lines ) in
-  (fun str->StringSet.mem (String.uppercase_ascii str) stringset)
+  fun str->StringSet.mem (String.uppercase_ascii str) stringset
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete_row str =
+let line_to_athlete_row next_int str =
   try
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
@@ -83,7 +83,7 @@ let line_to_athlete_row str =
       a = string_to_int_option (le 2)  in
     let fixed_name = String.uppercase_ascii (translator (le 1)) in
       match gender_option with
-        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name)}]
+        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int()}]
         | None     -> []
   with _ -> []
 
@@ -123,10 +123,8 @@ let get_score_iterator base_score =
   fun ()-> float_base *. 5.0 /. (4.0 +. (float_of_int (incer ())))
 
 let read_athletes lines =
-  let jaggedy = List.concat (List.map line_to_athlete_row lines) in
   let incer = get_incer() in
-  List.map (fun a->(a,incer())) jaggedy
-
+  List.concat (List.map (line_to_athlete_row incer) lines)
 
 type athete_packet = { athlete: athrow ; position: int; header: race_header }
 
@@ -135,7 +133,7 @@ let read_a_race fn =
   let lines = file_to_strings fn in
     let header = read_header lines and
         athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) in
-      List.map (fun (ath,idx)->{athlete = ath; position=idx; header=header}) athletes
+      List.map (fun ath->{athlete = ath; position=ath.place; header=header}) athletes
 
 let compare_athletes (a1:athrow) (a2:athrow) =
   let r = String.compare a1.name a2.name in
@@ -185,10 +183,10 @@ let group_athletes (alist:athete_packet list) =
    | a::rest,aa::restaa -> if (ath_match a.athlete aa.athlete) then grouper rest (a::acc) out else grouper rest [a] (acc::out) in
  grouper alist [] []
 
-(*let () =
+let () =
   let wrath = load_races_into_chunked_athletes () in
   print_partitioned (group_athletes wrath);
-  () *)
+  ()
 
 
 
