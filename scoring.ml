@@ -2,6 +2,9 @@ open Str
 open Char
 open Option
 
+module StringSet = Set.Make(String)
+
+
 (* string -> string list *)
 let dir_contents dir =
   let rec loop result = function
@@ -35,9 +38,9 @@ let string_to_gender str =
 let string_to_gender_and_foreign str =
   try
     match str.[0] with
-      | '*' -> (true, string_to_gender (Str.string_after str 1))
-      | _   -> (false, string_to_gender str)
-  with _ -> (false, None)
+      | '*' -> string_to_gender (Str.string_after str 1)
+      | _   -> string_to_gender str
+  with _ -> None
 
 let split_on_commas str = Str.split_delim (Str.regexp ",") str
 
@@ -64,15 +67,23 @@ let load_name_translator () =
 
 let translator = load_name_translator()
 
+let load_foreign_lookup () =
+  let lines = file_to_strings "data/foreign.dat" in
+  let upcased_lines = List.map String.uppercase_ascii lines in
+  let stringset = StringSet.of_seq (List.to_seq upcased_lines ) in
+  (fun str->StringSet.mem (String.uppercase_ascii str) stringset)
+
+let foreign_lookup = load_foreign_lookup()
+
 let line_to_athlete_row str =
   try
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
-    let (foreign,gender_option) = string_to_gender_and_foreign (le 3) and
-      a = string_to_int_option (le 2)
-    in
+    let gender_option = string_to_gender_and_foreign (le 3) and
+      a = string_to_int_option (le 2)  in
+    let fixed_name = String.uppercase_ascii (translator (le 1)) in
       match gender_option with
-        | Some(gender) -> [{name = String.uppercase_ascii (translator (le 1)) ; sex = gender ; age = a ; foreign = foreign}]
+        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name)}]
         | None     -> []
   with _ -> []
 
@@ -174,10 +185,10 @@ let group_athletes (alist:athete_packet list) =
    | a::rest,aa::restaa -> if (ath_match a.athlete aa.athlete) then grouper rest (a::acc) out else grouper rest [a] (acc::out) in
  grouper alist [] []
 
-let () =
+(*let () =
   let wrath = load_races_into_chunked_athletes () in
   print_partitioned (group_athletes wrath);
-  ()
+  () *)
 
 
 

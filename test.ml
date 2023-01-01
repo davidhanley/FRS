@@ -12,17 +12,38 @@ let test_split() =
 let test1 () =
   let parsed = line_to_athlete_row ",dave hanley,49,M,silly" in
   match parsed with
-    | pr::_ -> 
+    | pr::_ ->
                assert (pr.name = "DAVID HANLEY");
                assert (pr.sex = M);
-               assert (pr.age = Some 49)
+               assert (pr.age = Some 49);
+               assert (pr.foreign = false)
+    | [] -> assert false
+
+let test2 () =
+  let parsed = line_to_athlete_row ",Wai Ching Soh,24,M,silly" in
+  match parsed with
+    | pr::_ ->
+               assert (pr.name = "WAI CHING SOH");
+               assert (pr.sex = M);
+               assert (pr.age = Some 24);
+               assert (pr.foreign = true)
+    | [] -> assert false
+
+let test3 () =
+  let parsed = line_to_athlete_row ",Soh Wai Ching,24,M,silly" in
+  match parsed with
+    | pr::_ ->
+               assert (pr.name = "WAI CHING SOH");
+               assert (pr.sex = M);
+               assert (pr.age = Some 24);
+               assert (pr.foreign = true)
     | [] -> assert false
 
 let test_gender () =
-  assert ((string_to_gender_and_foreign "*M") = (true, Some M));
-  assert ((string_to_gender_and_foreign "*Female") = (true, Some F));
-  assert ((string_to_gender_and_foreign "f") = (false, Some F));
-  assert ((string_to_gender_and_foreign "m") = (false, Some M))
+  assert ((string_to_gender_and_foreign "*M") = Some M);
+  assert ((string_to_gender_and_foreign "*Female") = Some F);
+  assert ((string_to_gender_and_foreign "f") = Some F);
+  assert ((string_to_gender_and_foreign "m") = Some M)
 
 let test_translate () =
   let tt = load_name_translator() in
@@ -30,10 +51,18 @@ let test_translate () =
   assert ((tt "Soh waI ching") = "wai ching soh");
   assert ((tt "bob toews") = "bob toews")
 
+let test_is_foreign () =
+  assert ( foreign_lookup "waI ching SoH" = true);
+  assert ( foreign_lookup "dave hanley" = false)
 
-let () = test1()  ;
+
+let () = test1();
+         test2();
+         test3();
          test_split();
          test_gender();
-         test_translate()
+         test_translate();
+         test_is_foreign()
+
 
 
