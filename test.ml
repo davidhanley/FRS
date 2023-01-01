@@ -5,10 +5,6 @@ let test_split() =
   let ss = split_on_commas ",dave,12,M" in
   assert ((List.length ss) = 4)
 
-
-
-
-
 let test1 () =
   let parsed = line_to_athlete_row ",dave hanley,49,M,silly" in
   match parsed with
@@ -52,8 +48,8 @@ let test_translate () =
   assert ((tt "bob toews") = "bob toews")
 
 let test_is_foreign () =
-  assert ( foreign_lookup "waI ching SoH" = true);
-  assert ( foreign_lookup "dave hanley" = false)
+  assert (foreign_lookup "waI ching SoH" = true);
+  assert (foreign_lookup "dave hanley" = false)
 
 
 let () = test1();
