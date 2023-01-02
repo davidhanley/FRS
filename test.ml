@@ -54,6 +54,10 @@ let test_is_foreign () =
   assert (foreign_lookup "waI ching SoH" = true);
   assert (foreign_lookup "dave hanley" = false)
 
+let test_take () =
+  assert( take 5 [1;2] = [1;2]);
+  assert( take 5 [1;2;3;4;5;6;7] = [1;2;3;4;5])
+
 
 let () = test1();
          test2();
@@ -61,7 +65,8 @@ let () = test1();
          test_split();
          test_gender();
          test_translate();
-         test_is_foreign()
+         test_is_foreign();
+         test_take()
 
 
 

@@ -21,7 +21,7 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: float option}
+type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: float}
 
 let string_to_int_option str =
   try
@@ -75,7 +75,7 @@ let load_foreign_lookup () =
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete_row next_int str =
+let line_to_athlete_row next_int points_iterator str =
   try
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
@@ -83,7 +83,7 @@ let line_to_athlete_row next_int str =
       a = string_to_int_option (le 2)  in
     let fixed_name = String.uppercase_ascii (translator (le 1)) in
       match gender_option with
-        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int(); points = None}]
+        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int(); points = points_iterator()}]
         | None     -> []
   with _ -> []
 
@@ -122,17 +122,17 @@ let get_score_iterator base_score =
   let float_base = (float_of_int base_score) in
   fun ()-> float_base *. 5.0 /. (4.0 +. (float_of_int (incer ())))
 
-let read_athletes lines =
-  let incer = get_incer() in
-  List.concat (List.map (line_to_athlete_row incer) lines)
+let read_athletes lines base_points =
+  let incer = get_incer() and points_iterator = get_score_iterator base_points in
+  List.concat (List.map (line_to_athlete_row incer points_iterator) lines)
 
 type athete_packet = { athlete: athrow ; position: int; header: race_header }
 
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
   let lines = file_to_strings fn in
-    let header = read_header lines and
-        athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) in
+  let header = read_header lines in
+  let athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) header.points in
       List.map (fun ath->{athlete = ath; position=ath.place; header=header}) athletes
 
 let compare_athletes (a1:athrow) (a2:athrow) =
@@ -158,12 +158,6 @@ let age_option_to_string age_option =
   | Some(age) -> string_of_int age
   | None -> "N/A"
 
-let print_athletes (wrath:athete_packet list) =
-  Printf.printf "-----------------------\n";
-  List.iter (fun athl -> let ath = athl.athlete in
-                              Printf.printf "%s %s %d %s\n" ath.name (age_option_to_string ath.age) athl.position athl.header.name) wrath
-
-let print_partitioned wrath = List.map print_athletes wrath
 
 let age_match ao1 ao2 =
  match (ao1,ao2) with
@@ -185,6 +179,45 @@ let group_athletes (alist:athete_packet list) =
         then grouper rest (a::acc) out
         else grouper rest [a] (acc::out) in
  grouper alist [] []
+
+let float_cmp f1 f2 =
+  let fd =f1 -. f2 in
+  if fd < 0.0 then -1 else (if fd > 0.0 then 1 else 0)
+
+let compare_packets (a1:athete_packet) (a2:athete_packet) = float_cmp a2.athlete.points a1.athlete.points
+
+let rec take n lst =
+  match lst with
+  | [] -> []
+  | f::rest -> if n < 1 then [] else f::(take (n-1) rest)
+
+(* todo: take out middle map *)
+let scored_points results =
+  (take 5 results) |> List.map (fun r->r.athlete.points) |> List.fold_left (fun x y -> x +. y) 0.0
+
+type results_row = { name:string; points:float; packets: athete_packet list}
+
+let athelte_to_to_results_row (packets:athete_packet list) =
+  let sorted = List.sort compare_packets packets in
+  let scored_points =scored_points sorted in
+  let name = (List.hd packets).athlete.name in
+  {name = name; points=scored_points; packets = sorted }
+
+
+(*    *)
+
+
+let compare_rr (r1:results_row) (r2:results_row) = float_cmp (r2.points) (r1.points)
+
+let print_partitioned wrath =
+  let results_rows = List.map athelte_to_to_results_row wrath in
+  let sorted_results = List.sort compare_rr results_rows in
+  List.iter (fun (r:results_row)->
+      print_string "<tr>";
+      Printf.printf "<td>%s %f</td>" r.name r.points;
+      List.iter (fun (r:athete_packet)-> Printf.printf "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
+      print_string "</tr>\n" ) sorted_results
+
 
 
 let () =
