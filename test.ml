@@ -6,7 +6,8 @@ let test_split() =
   assert ((List.length ss) = 4)
 
 let test1 () =
-  let parsed = line_to_athlete_row ",dave hanley,49,M,silly" in
+  let incer = get_incer() in
+  let parsed = line_to_athlete_row  incer ",dave hanley,49,M,silly"   in
   match parsed with
     | pr::_ ->
                assert (pr.name = "DAVID HANLEY");
@@ -16,7 +17,8 @@ let test1 () =
     | [] -> assert false
 
 let test2 () =
-  let parsed = line_to_athlete_row ",Wai Ching Soh,24,M,silly" in
+  let incer = get_incer() in
+  let parsed = line_to_athlete_row incer ",Wai Ching Soh,24,M,silly" in
   match parsed with
     | pr::_ ->
                assert (pr.name = "WAI CHING SOH");
@@ -26,7 +28,8 @@ let test2 () =
     | [] -> assert false
 
 let test3 () =
-  let parsed = line_to_athlete_row ",Soh Wai Ching,24,M,silly" in
+  let incer = get_incer() in
+  let parsed = line_to_athlete_row incer ",Soh Wai Ching,24,M,silly" in
   match parsed with
     | pr::_ ->
                assert (pr.name = "WAI CHING SOH");

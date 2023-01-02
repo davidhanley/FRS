@@ -21,7 +21,7 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int}
+type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: float option}
 
 let string_to_int_option str =
   try
@@ -83,7 +83,7 @@ let line_to_athlete_row next_int str =
       a = string_to_int_option (le 2)  in
     let fixed_name = String.uppercase_ascii (translator (le 1)) in
       match gender_option with
-        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int()}]
+        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int(); points = None}]
         | None     -> []
   with _ -> []
 
@@ -180,12 +180,16 @@ let group_athletes (alist:athete_packet list) =
    | ([],[]) -> out
    | ([],_) -> acc::out
    | a::rest,[] -> grouper rest [a] out
-   | a::rest,aa::restaa -> if (ath_match a.athlete aa.athlete) then grouper rest (a::acc) out else grouper rest [a] (acc::out) in
+   | a::rest,aa::_ ->
+     if (ath_match a.athlete aa.athlete)
+        then grouper rest (a::acc) out
+        else grouper rest [a] (acc::out) in
  grouper alist [] []
+
 
 let () =
   let wrath = load_races_into_chunked_athletes () in
-  print_partitioned (group_athletes wrath);
+  let _ = print_partitioned (group_athletes wrath) in
   ()
 
 
