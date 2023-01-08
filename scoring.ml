@@ -114,7 +114,7 @@ let read_athletes lines base_points:athrow Seq.t =
   let points_iterator = get_score_iterator base_points in
   (Seq.concat (Seq.map2 line_to_athlete_row points_iterator (List.to_seq lines)))
 
-type athete_packet = { athlete: athrow ; position: int; header: race_header } (* remove position *)
+type athete_packet = { athlete: athrow ; header: race_header }
 
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
@@ -123,17 +123,17 @@ let read_a_race fn =
   | name::date::_::points::rest ->
     let header = read_header name date points in
     let athletes = read_athletes rest header.points in
-        List.map (fun ath->{athlete = ath; position=ath.place; header=header}) (List.of_seq athletes)
+        List.map (fun ath->{athlete = ath; header=header}) (List.of_seq athletes)
   | _ -> []
 
 let compare_athletes (a1:athrow) (a2:athrow) =
   let r = String.compare a1.name a2.name in
   if r <> 0 then r else
     match (a1.age,a2.age) with
-    | (None,None) -> 0
-    | (Some(_),None) -> 1
-    | (None,Some(_)) -> -1
-    | (Some(age1),Some(age2)) -> age1-age2
+    | (None, None) -> 0
+    | (Some(_), None) -> 1
+    | (None, Some(_)) -> -1
+    | (Some(age1), Some(age2)) -> age1-age2
 
 let sort_athletes (results:athete_packet list) =
    List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
