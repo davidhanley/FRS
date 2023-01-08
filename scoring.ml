@@ -103,14 +103,8 @@ let date_diff d1 d2 =
 
 type race_header = { name:string; date:date; points:int }
 
-let read_header lines =
-  match lines with
-  | name :: d :: _ :: p :: _ ->
-    (* Printf.printf "name:%s date:%s points:%s.\n" name d p; *)
-    let date = string_to_date d in
-    let points = int_of_string p in
-    { name = name ; date = date ; points = points }
-  | _ -> raise Exit
+let read_header name d p =
+    { name = name ; date = string_to_date d ; points = int_of_string p }
 
 let get_incer() =
   let index = ref 0 in
@@ -131,9 +125,12 @@ type athete_packet = { athlete: athrow ; position: int; header: race_header }
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
   let lines = file_to_strings fn in
-  let header = read_header lines in
-  let athletes = read_athletes (List.tl (List.tl (List.tl (List.tl lines)))) header.points in
-      List.map (fun ath->{athlete = ath; position=ath.place; header=header}) athletes
+  match lines with
+  | name::date::_::points::rest ->
+    let header = read_header name date points in
+    let athletes = read_athletes rest header.points in
+        List.map (fun ath->{athlete = ath; position=ath.place; header=header}) athletes
+  | _ -> []
 
 let compare_athletes (a1:athrow) (a2:athrow) =
   let r = String.compare a1.name a2.name in
