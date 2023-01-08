@@ -181,7 +181,7 @@ let group_athletes (alist:athete_packet list) =
  grouper alist [] []
 
 let float_cmp f1 f2 =
-  let fd =f1 -. f2 in
+  let fd = f1 -. f2 in
   if fd < 0.0 then -1 else (if fd > 0.0 then 1 else 0)
 
 let compare_packets (a1:athete_packet) (a2:athete_packet) = float_cmp a2.athlete.points a1.athlete.points
@@ -201,11 +201,7 @@ let athelte_to_to_results_row (packets:athete_packet list) =
   let sorted = List.sort compare_packets packets in
   let scored_points =scored_points sorted in
   let name = (List.hd packets).athlete.name in
-  {name = name; points=scored_points; packets = sorted }
-
-
-(*    *)
-
+  {name = name; points = scored_points; packets = sorted }
 
 let compare_rr (r1:results_row) (r2:results_row) = float_cmp (r2.points) (r1.points)
 
@@ -218,7 +214,18 @@ let print_partitioned wrath =
       List.iter (fun (r:athete_packet)-> Printf.printf "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
       print_string "</tr>\n" ) sorted_results
 
+type filter = {name:string; filterfunc: athete_packet->bool}
 
+let filter_gender gender (packet:athete_packet) = packet.athlete.sex = gender
+let genderfilters = [{name = "Male"; filterfunc = filter_gender M } ;
+                     {name = "Female"; filterfunc = filter_gender F }]
+
+type age_range = {low:int; high:int}
+
+(* let filter_age range (packet:athete_packet) =
+  match (packet.athlete.age,range) with
+    None->
+*)
 
 let () =
   let wrath = load_races_into_chunked_athletes () in
