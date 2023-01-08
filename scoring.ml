@@ -75,7 +75,7 @@ let load_foreign_lookup () =
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete_row next_int points_iterator str =
+let line_to_athlete_row (position,points) str =
   try
     let ss = split_on_commas str in
     let le idx = List.nth ss idx in
@@ -83,9 +83,9 @@ let line_to_athlete_row next_int points_iterator str =
       a = string_to_int_option (le 2)  in
     let fixed_name = String.uppercase_ascii (translator (le 1)) in
       match gender_option with
-        | Some(gender) -> [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = next_int(); points = points_iterator()}]
-        | None     -> []
-  with _ -> []
+        | Some(gender) -> List.to_seq [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = position; points = points}]
+        | None     -> Seq.empty
+  with _ -> Seq.empty
 
 (*
 let () = assert ((line_to_athlete_row "1,WAI CHING SOH,,M,10:44:00 AM") = Some {name = "WAI CHING SOH" ; sex = M ; age = None })
@@ -106,21 +106,15 @@ type race_header = { name:string; date:date; points:int }
 let read_header name d p =
     { name = name ; date = string_to_date d ; points = int_of_string p }
 
-let get_incer() =
-  let index = ref 0 in
-  let incer () = index := !index + 1; !index in
-  incer
-
 let get_score_iterator base_score =
-  let incer = get_incer() in
-  let float_base = (float_of_int base_score) in
-  fun ()-> float_base *. 5.0 /. (4.0 +. (float_of_int (incer ())))
+  let float_base = (float_of_int (5 * base_score)) in
+  Seq.map (fun position-> (position,float_base /. (4.0 +. (float_of_int position)))) (Seq.ints 1)
 
-let read_athletes lines base_points =
-  let incer = get_incer() and points_iterator = get_score_iterator base_points in
-  List.concat (List.map (line_to_athlete_row incer points_iterator) lines)
+let read_athletes lines base_points:athrow Seq.t =
+  let points_iterator = get_score_iterator base_points in
+  (Seq.concat (Seq.map2 line_to_athlete_row points_iterator (List.to_seq lines)))
 
-type athete_packet = { athlete: athrow ; position: int; header: race_header }
+type athete_packet = { athlete: athrow ; position: int; header: race_header } (* remove position *)
 
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
@@ -129,7 +123,7 @@ let read_a_race fn =
   | name::date::_::points::rest ->
     let header = read_header name date points in
     let athletes = read_athletes rest header.points in
-        List.map (fun ath->{athlete = ath; position=ath.place; header=header}) athletes
+        List.map (fun ath->{athlete = ath; position=ath.place; header=header}) (List.of_seq athletes)
   | _ -> []
 
 let compare_athletes (a1:athrow) (a2:athrow) =
