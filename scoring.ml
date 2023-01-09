@@ -17,7 +17,7 @@ let dir_contents dir =
     | f::fs -> loop (f::result) fs
     | []    -> result
   in
-    List.filter (String.ends_with ~suffix:".csv") (loop [] [dir])
+    List.to_seq (List.filter (String.ends_with ~suffix:".csv") (loop [] [dir]))
 
 type gender = M | F
 
@@ -70,7 +70,7 @@ let translator = load_name_translator()
 let load_foreign_lookup () =
   let lines = file_to_strings "data/foreign.dat" in
   let upcased_lines = List.map String.uppercase_ascii lines in
-  let stringset = StringSet.of_seq (List.to_seq upcased_lines ) in
+  let stringset = StringSet.of_seq (List.to_seq upcased_lines) in
   fun str->StringSet.mem (String.uppercase_ascii str) stringset
 
 let foreign_lookup = load_foreign_lookup()
@@ -123,8 +123,8 @@ let read_a_race fn =
   | name::date::_::points::rest ->
     let header = read_header name date points in
     let athletes = read_athletes rest header.points in
-        List.map (fun ath->{athlete = ath; header=header}) (List.of_seq athletes)
-  | _ -> []
+        Seq.map (fun ath->{athlete = ath; header=header}) athletes
+  | _ -> Seq.empty
 
 let compare_athletes (a1:athrow) (a2:athrow) =
   let r = String.compare a1.name a2.name in
@@ -140,8 +140,8 @@ let sort_athletes (results:athete_packet list) =
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents "data" in
-  let results = List.concat (List.map read_a_race files) in
-  let sorted_results = sort_athletes results in
+  let results = Seq.concat_map read_a_race files in
+  let sorted_results = sort_athletes (List.of_seq results) in
   sorted_results
 
 let age_option_to_string age_option =
@@ -184,13 +184,13 @@ let rec take n lst =
 
 (* todo: take out middle map *)
 let scored_points results =
-  (take 5 results) |> List.map (fun r->r.athlete.points) |> List.fold_left (fun x y -> x +. y) 0.0
+   List.fold_left (fun x y -> x +. y.athlete.points) 0.0 (take 5 results)
 
 type results_row = { name:string; points:float; packets: athete_packet list}
 
 let athelte_to_to_results_row (packets:athete_packet list) =
   let sorted = List.sort compare_packets packets in
-  let scored_points =scored_points sorted in
+  let scored_points = scored_points sorted in
   let name = (List.hd packets).athlete.name in
   {name = name; points = scored_points; packets = sorted }
 
