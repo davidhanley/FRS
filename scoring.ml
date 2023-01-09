@@ -42,7 +42,9 @@ let string_to_gender_and_foreign str =
       | _   -> string_to_gender str
   with _ -> None
 
-let split_on_commas str = Str.split_delim (Str.regexp ",") str
+let comma_regex = (Str.regexp ",")
+
+let split_on_commas = Str.split_delim comma_regex
 
 let file_to_strings fn =
   let inf = open_in fn in
