@@ -196,9 +196,26 @@ let athelte_to_to_results_row (packets:athete_packet list) =
   let name = (List.hd packets).athlete.name in
   {name = name; points = scored_points; packets = sorted }
 
+
+type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
+
+let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
+
+let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
+
+let make_gender_filter = make_filter "gender"
+
+let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_filter "Male" (filter_gender M)]
+
+let apply_filters filters wrath =
+  List.map (fun filter -> [filter] , List.filter filter.filterfunc wrath) filters
+
+
+
 let compare_rr (r1:results_row) (r2:results_row) = float_cmp (r2.points) (r1.points)
 
-let print_partitioned fn wrath =
+let print_partitioned ((filters:filter list), wrath) =
+  let fn = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html" in
   let h = open_out fn in
   let results_rows = List.map athelte_to_to_results_row wrath in
   let sorted_results = List.sort compare_rr results_rows in
@@ -212,26 +229,12 @@ let print_partitioned fn wrath =
   close_out h
 
 
-type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
-
-let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
-
-let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
-
-let make_gender_filter = make_filter "gender"
-
-let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_filter "Male" (filter_gender M);
-                     ]
-
-
-let apply_filters filters (wrath:athete_packet list list) =
-  List.map (fun filter -> List.filter filter.filterfunc wrath) filters
 
 let () =
   let wrath = load_races_into_chunked_athletes () in
   let grouped = group_athletes wrath in
-  let rtypes = apply_filters genderfilters grouped in
-  let _ = List.map (print_partitioned "test.html") rtypes in
+  let filtered = apply_filters genderfilters grouped in
+  let _ = List.map print_partitioned filtered in
   ()
 
 
