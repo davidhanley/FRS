@@ -1,12 +1,13 @@
 open OUnit2
 open Scoring
+open Num
 
 let test_split() =
   let ss = split_on_commas ",dave,12,M" in
   assert ((List.length ss) = 4)
 
 let test1 () =
-  let parsed = line_to_athlete_row  (1,100.0) ",dave hanley,49,M,silly"   in
+  let parsed = line_to_athlete_row  (1,Int 100) ",dave hanley,49,M,silly"   in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "DAVID HANLEY");
@@ -16,7 +17,7 @@ let test1 () =
     | [] -> assert false
 
 let test2 () =
-  let parsed = line_to_athlete_row (1,200.0) ",Wai Ching Soh,24,M,silly" in
+  let parsed = line_to_athlete_row (1,Int 200) ",Wai Ching Soh,24,M,silly" in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "WAI CHING SOH");
@@ -26,7 +27,7 @@ let test2 () =
     | [] -> assert false
 
 let test3 () =
-  let parsed = line_to_athlete_row (1,100.0) ",Soh Wai Ching,24,M,silly" in
+  let parsed = line_to_athlete_row (1,Int 100) ",Soh Wai Ching,24,M,silly" in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "WAI CHING SOH");

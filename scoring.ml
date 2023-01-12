@@ -1,6 +1,8 @@
+
 open Str
 open Char
 open Option
+open Num
 
 module StringSet = Set.Make(String)
 
@@ -21,7 +23,7 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: float}
+type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: num}
 
 let string_to_int_option str:int option =
   try
@@ -109,8 +111,8 @@ let read_header name d p =
     { name = name ; date = string_to_date d ; points = int_of_string p }
 
 let get_score_iterator base_score =
-  let float_base = (float_of_int (5 * base_score)) in
-  Seq.map (fun position-> (position,float_base /. (4.0 +. (float_of_int position)))) (Seq.ints 1)
+  let float_base = (Int 5) */ (Int base_score) in
+  Seq.map (fun position-> (position,float_base // ((Int 4) +/ (Int position)))) (Seq.ints 1)
 
 let read_athletes lines base_points:athrow Seq.t =
   let points_iterator = get_score_iterator base_points in
@@ -177,7 +179,7 @@ let float_cmp f1 f2 =
   let fd = f1 -. f2 in
   if fd < 0.0 then -1 else (if fd > 0.0 then 1 else 0)
 
-let compare_packets (a1:athete_packet) (a2:athete_packet) = float_cmp a2.athlete.points a1.athlete.points
+let compare_packets (a1:athete_packet) (a2:athete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
 
 let rec take n lst =
   match lst with
@@ -186,9 +188,9 @@ let rec take n lst =
 
 (* todo: take out middle map *)
 let scored_points results =
-   List.fold_left (fun x y -> x +. y.athlete.points) 0.0 (take 5 results)
+   List.fold_left (fun x y -> x +/ y.athlete.points) (Int 0) (take 5 results)
 
-type results_row = { name:string; points:float; packets: athete_packet list}
+type results_row = { name:string; points:num; packets: athete_packet list}
 
 let athelte_to_to_results_row (packets:athete_packet list) =
   let sorted = List.sort compare_packets packets in
@@ -216,7 +218,7 @@ let apply_filters filters wrath =
 
 
 
-let compare_rr (r1:results_row) (r2:results_row) = float_cmp (r2.points) (r1.points)
+let compare_rr (r1:results_row) (r2:results_row) = Num.compare_num (r2.points) (r1.points)
 
 let print_partitioned ((filters:filter list), wrath) =
   let fn = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html" in
@@ -226,8 +228,8 @@ let print_partitioned ((filters:filter list), wrath) =
   Printf.fprintf h "<table border=2>";
   List.iter (fun (r:results_row)->
       Printf.fprintf h "<tr>";
-      Printf.fprintf h "<td>%s %f</td>" r.name r.points;
-      List.iter (fun (r:athete_packet)-> Printf.fprintf h "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
+      Printf.fprintf h "<td>%s %f</td>" r.name (Num.float_of_num r.points);
+      List.iter (fun (r:athete_packet)-> Printf.fprintf h "<td> %s <br> %f</td>" r.header.name (Num.float_of_num r.athlete.points)) r.packets;
       Printf.fprintf h "</tr>\n" ) sorted_results;
   Printf.fprintf h "</table>";
   close_out h
