@@ -198,14 +198,19 @@ let athelte_to_to_results_row (packets:athete_packet list) =
 
 let compare_rr (r1:results_row) (r2:results_row) = float_cmp (r2.points) (r1.points)
 
-let print_partitioned wrath =
+let print_partitioned fn wrath =
+  let h = open_out fn in
   let results_rows = List.map athelte_to_to_results_row wrath in
   let sorted_results = List.sort compare_rr results_rows in
+  Printf.fprintf h "<table border=2>";
   List.iter (fun (r:results_row)->
-      print_string "<tr>";
-      Printf.printf "<td>%s %f</td>" r.name r.points;
-      List.iter (fun (r:athete_packet)-> Printf.printf "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
-      print_string "</tr>\n" ) sorted_results
+      Printf.fprintf h "<tr>";
+      Printf.fprintf h "<td>%s %f</td>" r.name r.points;
+      List.iter (fun (r:athete_packet)-> Printf.fprintf h "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
+      Printf.fprintf h "</tr>\n" ) sorted_results;
+  Printf.fprintf h "</table>";
+  close_out h
+
 
 type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
 
@@ -226,7 +231,7 @@ let () =
   let wrath = load_races_into_chunked_athletes () in
   let grouped = group_athletes wrath in
   let rtypes = apply_filters genderfilters grouped in
-  let _ = List.map print_partitioned rtypes in
+  let _ = List.map (print_partitioned "test.html") rtypes in
   ()
 
 
