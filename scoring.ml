@@ -198,14 +198,18 @@ let athelte_to_to_results_row (packets:athete_packet list) =
 
 
 type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
-
-let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
-
 let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
 
-let make_gender_filter = make_filter "gender"
 
+let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
+let make_gender_filter = make_filter "gender"
 let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_filter "Male" (filter_gender M)]
+
+let filter_age age_range (packets:athete_packet list) =
+  match (age_range,packets) with
+  | (None,_) -> true
+  | (Some(lo,hi),packet::_) -> packet.athlete.age >= lo && packet.athlete.age <= hi
+  | _ -> false
 
 let apply_filters filters wrath =
   List.map (fun filter -> [filter] , List.filter filter.filterfunc wrath) filters
