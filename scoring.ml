@@ -23,7 +23,7 @@ type gender = M | F
 
 type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: float}
 
-let string_to_int_option str =
+let string_to_int_option str:int option =
   try
   	Some (int_of_string str)
   with
@@ -207,22 +207,26 @@ let print_partitioned wrath =
       List.iter (fun (r:athete_packet)-> Printf.printf "<td> %s <br> %f</td>" r.header.name r.athlete.points) r.packets;
       print_string "</tr>\n" ) sorted_results
 
-type filter = {name:string; filterfunc: athete_packet->bool}
+type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
 
-let filter_gender gender (packet:athete_packet) = packet.athlete.sex = gender
-let genderfilters = [{name = "Male"; filterfunc = filter_gender M } ;
-                     {name = "Female"; filterfunc = filter_gender F }]
+let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
 
-type age_range = {low:int; high:int}
+let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
 
-(* let filter_age range (packet:athete_packet) =
-  match (packet.athlete.age,range) with
-    None->
-*)
+let make_gender_filter = make_filter "gender"
+
+let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_filter "Male" (filter_gender M);
+                     ]
+
+
+let apply_filters filters (wrath:athete_packet list list) =
+  List.map (fun filter -> List.filter filter.filterfunc wrath) filters
 
 let () =
   let wrath = load_races_into_chunked_athletes () in
-  let _ = print_partitioned (group_athletes wrath) in
+  let grouped = group_athletes wrath in
+  let rtypes = apply_filters genderfilters grouped in
+  let _ = List.map print_partitioned rtypes in
   ()
 
 
