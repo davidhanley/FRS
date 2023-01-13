@@ -3,6 +3,7 @@ open Str
 open Char
 open Option
 open Num
+open Unix
 
 module StringSet = Set.Make(String)
 
@@ -26,7 +27,7 @@ type gender = M | F
 type athlete = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: num}
 
 (* how is this not in the standard library *)
-let string_to_int_option str:int option =
+let string_to_int_option str =
   try
   	Some (int_of_string str)
   with
@@ -65,10 +66,10 @@ let file_to_strings fn =
 let load_name_translator () =
   let lines = List.map split_on_commas (file_to_strings "data/translate.dat") in
   let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
-  (fun name -> let rr = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
-    match rr with
+  (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
+    match translation with
       | None -> name
-      | Some (_,n) -> n )
+      | Some (_,translated) -> translated )
 
 let translator = load_name_translator()
 
@@ -80,41 +81,42 @@ let load_foreign_lookup () =
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete_row (position,points) str =
+let line_to_athlete (position, points) str =
   try
-    let ss = split_on_commas str in
-    let le idx = List.nth ss idx in
-    let gender_option = string_to_gender_and_foreign (le 3) and
-      a = string_to_int_option (le 2)  in
-    let fixed_name = String.uppercase_ascii (translator (le 1)) in
+    let split_line = split_on_commas str in
+    let column idx = List.nth split_line idx in
+    let gender_option = string_to_gender_and_foreign (column 3) and
+      a = string_to_int_option (column 2)  in
+    let fixed_name:string = String.uppercase_ascii (translator (column 1)) in
       match gender_option with
-        | Some(gender) -> List.to_seq [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup(fixed_name); place = position; points = points}]
+        | Some(gender) -> List.to_seq [{name = fixed_name ; sex = gender ; age = a ; foreign = foreign_lookup fixed_name; place = position; points = points}]
         | None     -> Seq.empty
   with _ -> Seq.empty
 
 
-type date = { y:int ; m:int ; d:int }
-
 let string_to_date str =
   let parts = List.map int_of_string (Str.split (Str.regexp "-+") str) in
   let n i = List.nth parts i in
-  { y = n 0; m = n 1 ; d = n 2 }
+  { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
 
-let date_diff d1 d2 =
-  (d2.y-d1.y)*30*12 + (d2.m-d1.m)*30 + (d2.d-d1.d)
+let date_over_a_year_ago date now =
+  let (secs,_) = Unix.mktime date in
+    (int_of_float secs) + 365 * 24 * 60 * 60 < now
 
-type race_header = { name:string; date:date; points:int }
+type race_header = { race_name:string; date:tm; points:int }
 
-let read_header name d p =
-    { name = name ; date = string_to_date d ; points = int_of_string p }
+let parse_header name date_string points_string =
+    { race_name = name ; date = string_to_date date_string ; points = int_of_string points_string }
 
+(* because we add up a lot of small numebrs with a lot of decimals, don't use floats.  Scores
+   are rationals, so keep them as such.  Just convert to a float at the end *)
 let get_score_iterator base_score =
   let float_base = (Int 5) */ (Int base_score) in
   Seq.map (fun position-> (position,float_base // ((Int 4) +/ (Int position)))) (Seq.ints 1)
 
-let read_athletes lines base_points:athlete Seq.t =
+let read_athletes lines base_points =
   let points_iterator = get_score_iterator base_points in
-  (Seq.concat (Seq.map2 line_to_athlete_row points_iterator (List.to_seq lines)))
+  (Seq.concat (Seq.map2 line_to_athlete points_iterator (List.to_seq lines)))
 
 type athete_packet = { athlete: athlete ; header: race_header }
 
@@ -123,8 +125,13 @@ let read_a_race fn =
   let lines = file_to_strings fn in
   match lines with
   | name::date::_::points::rest ->
-    let header = read_header name date points in
-    let athletes = read_athletes rest header.points in
+    let header = parse_header name date points in
+    if date_over_a_year_ago header.date (int_of_float (Unix.time ())) then begin
+      Printf.printf "Too old, skipping...\n";
+      Seq.empty
+      end
+    else
+      let athletes = read_athletes rest header.points in
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
 
@@ -190,14 +197,14 @@ let scored_points results =
 
 type results_row = { name:string; points:num; packets: athete_packet list}
 
-let athelte_to_to_results_row (packets:athete_packet list) =
+let athlete_to_to_results_row (packets:athete_packet list) =
   let sorted = List.sort compare_packets packets in
   let scored_points = scored_points sorted in
   let name = (List.hd packets).athlete.name in
   {name = name; points = scored_points; packets = sorted }
 
 
-type filter = {filtertype:string; name:string; filterfunc: athete_packet list->bool}
+type filter = { filtertype : string; name : string; filterfunc: athete_packet list -> bool}
 let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
 
 
@@ -216,29 +223,30 @@ let apply_filters filters wrath =
 
 
 
-let compare_rr (r1:results_row) (r2:results_row) = Num.compare_num (r2.points) (r1.points)
+let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points
 
-let print_partitioned ((filters:filter list), wrath) =
-  let fn = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html" in
-  let h = open_out fn in
-  let results_rows = List.map athelte_to_to_results_row wrath in
-  let sorted_results = List.sort compare_rr results_rows in
-  Printf.fprintf h "<table border=2>";
-  List.iter (fun (r:results_row)->
-      Printf.fprintf h "<tr>";
-      Printf.fprintf h "<td>%s %f</td>" r.name (Num.float_of_num r.points);
-      List.iter (fun (r:athete_packet)-> Printf.fprintf h "<td> %s <br> %f</td>" r.header.name (Num.float_of_num r.athlete.points)) r.packets;
-      Printf.fprintf h "</tr>\n" ) sorted_results;
-  Printf.fprintf h "</table>";
-  close_out h
+let print_ranked_athletes (filters, wrath) =
+  let filename = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html" in
+  let handle = open_out filename in
+  let out = Printf.fprintf handle in
+  let results_rows = List.map athlete_to_to_results_row wrath in
+  let sorted_results:results_row list = List.sort compare_rr results_rows in
+  out "<table border=2>";
+  List.iter (fun (r:results_row)-> (* why is this type not inferred *)
+      out "<tr>";
+      Printf.fprintf handle "<td>%s %f</td>" r.name (Num.float_of_num r.points);
+      List.iter (fun (r:athete_packet)-> Printf.fprintf handle "<td> %s <br> %f</td>" r.header.race_name (Num.float_of_num r.athlete.points)) r.packets;
+      out "</tr>\n" ) sorted_results;
+  out "</table>";
+  close_out handle
 
 
 
 let () =
-  let wrath = load_races_into_chunked_athletes () in
-  let grouped = group_athletes wrath in
+  let all_athletes = load_races_into_chunked_athletes () in
+  let grouped = group_athletes all_athletes in
   let filtered = apply_filters genderfilters grouped in
-  let _ = List.map print_partitioned filtered in
+  let _ = List.map print_ranked_athletes filtered in
   ()
 
 
