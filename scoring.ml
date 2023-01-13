@@ -46,9 +46,10 @@ let string_to_gender_and_foreign str =
       | _   -> string_to_gender str
   with _ -> None
 
-let comma_regex = (Str.regexp ",")
 
+let comma_regex = (Str.regexp ",")
 let split_on_commas = Str.split_delim comma_regex
+
 
 let file_to_strings fn =
   let inf = open_in fn in
@@ -108,8 +109,8 @@ type race_header = { race_name:string; date:tm; points:int }
 let parse_header name date_string points_string =
     { race_name = name ; date = string_to_date date_string ; points = int_of_string points_string }
 
-(* because we add up a lot of small numebrs with a lot of decimals, don't use floats.  Scores
-   are rationals, so keep them as such.  Just convert to a float at the end *)
+(* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
+   are rationals, so keep them as such.  Just convert to a float at the end for printing *)
 let get_score_iterator base_score =
   let float_base = (Int 5) */ (Int base_score) in
   Seq.map (fun position-> (position,float_base // ((Int 4) +/ (Int position)))) (Seq.ints 1)
@@ -118,7 +119,7 @@ let read_athletes lines base_points =
   let points_iterator = get_score_iterator base_points in
   (Seq.concat (Seq.map2 line_to_athlete points_iterator (List.to_seq lines)))
 
-type athete_packet = { athlete: athlete ; header: race_header }
+type athlete_packet = { athlete: athlete ; header: race_header }
 
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
@@ -135,7 +136,7 @@ let read_a_race fn =
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
 
-let compare_athletes (a1:athlete) (a2:athlete) =
+let compare_athletes a1 a2 =
   let r = String.compare a1.name a2.name in
   if r <> 0 then r else
     match (a1.age,a2.age) with
@@ -144,7 +145,7 @@ let compare_athletes (a1:athlete) (a2:athlete) =
     | (None, Some(_)) -> -1
     | (Some(age1), Some(age2)) -> age1-age2
 
-let sort_athletes (results:athete_packet list) =
+let sort_athletes results =
    List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
 
 let load_races_into_chunked_athletes () =
@@ -168,8 +169,8 @@ let age_match ao1 ao2 =
 let ath_match ao1 ao2 =
   (age_match ao1.age ao2.age) && (ao1.name = ao2.name)
 
-let group_athletes (alist:athete_packet list) =
- let rec grouper (lst:athete_packet list) acc out =
+let group_athletes (alist:athlete_packet list) =
+ let rec grouper (lst:athlete_packet list) acc out =
    match (lst,acc) with
    | ([],[]) -> out
    | ([],_) -> acc::out
@@ -184,7 +185,7 @@ let float_cmp f1 f2 =
   let fd = f1 -. f2 in
   if fd < 0.0 then -1 else (if fd > 0.0 then 1 else 0)
 
-let compare_packets (a1:athete_packet) (a2:athete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
+let compare_packets (a1:athlete_packet) (a2:athlete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
 
 let rec take n lst =
   match lst with
@@ -195,24 +196,24 @@ let rec take n lst =
 let scored_points results =
    List.fold_left (fun x y -> x +/ y.athlete.points) (Int 0) (take 5 results)
 
-type results_row = { name:string; points:num; packets: athete_packet list}
+type results_row = { name:string; points:num; packets: athlete_packet list}
 
-let athlete_to_to_results_row (packets:athete_packet list) =
+let athlete_to_to_results_row (packets:athlete_packet list) =
   let sorted = List.sort compare_packets packets in
   let scored_points = scored_points sorted in
   let name = (List.hd packets).athlete.name in
   {name = name; points = scored_points; packets = sorted }
 
 
-type filter = { filtertype : string; name : string; filterfunc: athete_packet list -> bool}
+type filter = { filtertype : string; name : string; filterfunc: athlete_packet list -> bool}
 let make_filter ftype name ff = { filtertype = ftype; name = name; filterfunc = ff }
 
 
-let filter_gender gender (packets:athete_packet list) = (List.hd packets).athlete.sex = gender
+let filter_gender gender (packets:athlete_packet list) = (List.hd packets).athlete.sex = gender
 let make_gender_filter = make_filter "gender"
 let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_filter "Male" (filter_gender M)]
 
-let filter_age age_range (packets:athete_packet list) =
+let filter_age age_range (packets:athlete_packet list) =
   match (age_range,packets) with
   | (None,_) -> true
   | (Some(lo,hi),packet::_) -> packet.athlete.age >= lo && packet.athlete.age <= hi
@@ -232,10 +233,10 @@ let print_ranked_athletes (filters, wrath) =
   let results_rows = List.map athlete_to_to_results_row wrath in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   out "<table border=2>";
-  List.iter (fun (r:results_row)-> (* why is this type not inferred *)
+  List.iter (fun (row:results_row)-> (* why is this type not inferred *)
       out "<tr>";
-      Printf.fprintf handle "<td>%s %f</td>" r.name (Num.float_of_num r.points);
-      List.iter (fun (r:athete_packet)-> Printf.fprintf handle "<td> %s <br> %f</td>" r.header.race_name (Num.float_of_num r.athlete.points)) r.packets;
+      Printf.fprintf handle "<td>%s %f</td>" row.name (Num.float_of_num row.points);
+      List.iter (fun packet-> Printf.fprintf handle "<td> %s <br> %f</td>" packet.header.race_name (Num.float_of_num packet.athlete.points)) row.packets;
       out "</tr>\n" ) sorted_results;
   out "</table>";
   close_out handle
@@ -246,8 +247,7 @@ let () =
   let all_athletes = load_races_into_chunked_athletes () in
   let grouped = group_athletes all_athletes in
   let filtered = apply_filters genderfilters grouped in
-  let _ = List.map print_ranked_athletes filtered in
-  ()
+  List.iter print_ranked_athletes filtered
 
 
 
