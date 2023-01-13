@@ -23,8 +23,9 @@ let dir_contents dir =
 
 type gender = M | F
 
-type athrow = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: num}
+type athlete = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: num}
 
+(* how is this not in the standard library *)
 let string_to_int_option str:int option =
   try
   	Some (int_of_string str)
@@ -91,9 +92,6 @@ let line_to_athlete_row (position,points) str =
         | None     -> Seq.empty
   with _ -> Seq.empty
 
-(*
-let () = assert ((line_to_athlete_row "1,WAI CHING SOH,,M,10:44:00 AM") = Some {name = "WAI CHING SOH" ; sex = M ; age = None })
-*)
 
 type date = { y:int ; m:int ; d:int }
 
@@ -114,11 +112,11 @@ let get_score_iterator base_score =
   let float_base = (Int 5) */ (Int base_score) in
   Seq.map (fun position-> (position,float_base // ((Int 4) +/ (Int position)))) (Seq.ints 1)
 
-let read_athletes lines base_points:athrow Seq.t =
+let read_athletes lines base_points:athlete Seq.t =
   let points_iterator = get_score_iterator base_points in
   (Seq.concat (Seq.map2 line_to_athlete_row points_iterator (List.to_seq lines)))
 
-type athete_packet = { athlete: athrow ; header: race_header }
+type athete_packet = { athlete: athlete ; header: race_header }
 
 let read_a_race fn =
   Printf.printf "Reading.. %s\n" fn;
@@ -130,7 +128,7 @@ let read_a_race fn =
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
 
-let compare_athletes (a1:athrow) (a2:athrow) =
+let compare_athletes (a1:athlete) (a2:athlete) =
   let r = String.compare a1.name a2.name in
   if r <> 0 then r else
     match (a1.age,a2.age) with
