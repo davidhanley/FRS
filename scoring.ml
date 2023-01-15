@@ -196,13 +196,14 @@ let rec take n lst =
 let scored_points results =
    List.fold_left (fun x y -> x +/ y.athlete.points) (Int 0) (take 5 results)
 
-type results_row = { name:string; points:num; packets: athlete_packet list}
+type results_row = { name:string; points:num; packets: athlete_packet list; age: string}
 
 let athlete_to_to_results_row (packets:athlete_packet list) =
   let sorted = List.sort compare_packets packets in
   let scored_points = scored_points sorted in
   let name = (List.hd packets).athlete.name in
-  {name = name; points = scored_points; packets = sorted }
+  let age  = (List.hd packets).athlete.age in
+  {name = name; points = scored_points; packets = sorted ; age = age_option_to_string age}
 
 
 type filter = { filtertype : string; name : string; filterfunc: athlete_packet list -> bool}
@@ -216,38 +217,46 @@ let genderfilters = [make_gender_filter "Female" (filter_gender F); make_gender_
 let filter_age age_range (packets:athlete_packet list) =
   match (age_range,packets) with
   | (None,_) -> true
-  | (Some(lo,hi),packet::_) -> packet.athlete.age >= lo && packet.athlete.age <= hi
-  | _ -> false
+  | (Some(lo,hi),packet::_) -> (packet.athlete.age >= Some(lo)) && (packet.athlete.age <= Some(hi))
+  | (_,_) -> false
 
-let apply_filters filters wrath =
-  List.map (fun filter -> [filter] , List.filter filter.filterfunc wrath) filters
+let make_age_filter = make_filter "age"
+let ranges = [None; Some(0,9); Some(10,19); Some(20,29); Some(30,39); Some(40,49); Some(50,59); Some(60,69); Some(70,79); Some (80,89); Some(90,99)]
+let range_to_string r =
+  match r with
+    | None->"all"
+    | Some(lo, hi) -> Printf.sprintf "%d-%d" lo hi
+let age_filters = List.map (fun t-> make_age_filter (range_to_string t) (filter_age t)) ranges
 
+type filtered = {filters: filter list; packets: athlete_packet list list}
 
+let apply_filters filters op =
+  List.map (fun filter -> {filters = filter::op.filters ;  packets = List.filter filter.filterfunc op.packets } ) filters
 
 let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points
 
-let print_ranked_athletes (filters, wrath) =
-  let filename = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html" in
+let print_ranked_athletes filtered =
+  let filename = String.cat (String.concat "-" (List.map (fun f->f.name) filtered.filters)) ".html" in
   let handle = open_out filename in
   let out = Printf.fprintf handle in
-  let results_rows = List.map athlete_to_to_results_row wrath in
+  let results_rows = List.map athlete_to_to_results_row filtered.packets in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   out "<table border=2>";
   List.iter (fun (row:results_row)-> (* why is this type not inferred *)
       out "<tr>";
-      Printf.fprintf handle "<td>%s %f</td>" row.name (Num.float_of_num row.points);
+      Printf.fprintf handle "<td>%s <br> %s <br> %f</td>" row.name row.age (Num.float_of_num row.points);
       List.iter (fun packet-> Printf.fprintf handle "<td> %s <br> %f</td>" packet.header.race_name (Num.float_of_num packet.athlete.points)) row.packets;
       out "</tr>\n" ) sorted_results;
   out "</table>";
   close_out handle
 
-
-
 let () =
   let all_athletes = load_races_into_chunked_athletes () in
   let grouped = group_athletes all_athletes in
-  let filtered = apply_filters genderfilters grouped in
-  List.iter print_ranked_athletes filtered
+  let with_empty_filters = [{filters = []; packets = grouped}] in
+  let filtered_gender = List.concat (List.map (apply_filters genderfilters) with_empty_filters) in
+  let filtered_age = List.concat(List.map (apply_filters age_filters) filtered_gender)  in
+  List.iter print_ranked_athletes filtered_age
 
 
 
