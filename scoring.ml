@@ -228,6 +228,20 @@ let range_to_string r =
     | Some(lo, hi) -> Printf.sprintf "%d-%d" lo hi
 let age_filters = List.map (fun t-> make_age_filter (range_to_string t) (filter_age t)) ranges
 
+let make_foreign_filter = make_filter "foreign"
+let any_foreign (packets:athlete_packet list) = List.exists (fun packet-> packet.athlete.foreign) packets
+
+type ftypes = ALL | US_ONLY
+let ftype_to_sgtring ft =
+  match ft with
+  | ALL -> "All"
+  | US_ONLY -> "US_only"
+let filter_foreign ftype packets =
+  if ftype = ALL || (any_foreign packets) == false then true else
+  if ftype = US_ONLY then false else true
+let foreign_filters = List.map (fun t->make_foreign_filter (ftype_to_sgtring t) (filter_foreign t)) [ALL;US_ONLY]
+
+
 type filtered = {filters: filter list; packets: athlete_packet list list}
 
 let apply_filters filters op =
@@ -255,8 +269,9 @@ let () =
   let grouped = group_athletes all_athletes in
   let with_empty_filters = [{filters = []; packets = grouped}] in
   let filtered_gender = List.concat (List.map (apply_filters genderfilters) with_empty_filters) in
-  let filtered_age = List.concat(List.map (apply_filters age_filters) filtered_gender)  in
-  List.iter print_ranked_athletes filtered_age
+  let filtered_age = List.concat(List.map (apply_filters age_filters) filtered_gender) in
+  let filtered_foreign = List.concat(List.map (apply_filters foreign_filters) filtered_age) in
+  List.iter print_ranked_athletes filtered_foreign
 
 
 
