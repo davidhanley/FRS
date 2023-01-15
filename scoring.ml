@@ -249,12 +249,25 @@ let apply_filters filters op =
 
 let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points
 
+let filters_to_fn filters = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html"
+
+let print_header_row out (filter_row:(filter list)) =
+  Printf.fprintf out "<h2> %s : </h2> " ((List.hd filter_row).filtertype);
+  List.iter (fun f -> Printf.fprintf out "%s " f.name) filter_row;
+  Printf.fprintf out"<br>"
+
+let print_header out =
+  List.iter (print_header_row out) [genderfilters; age_filters; foreign_filters]
+
+
+
 let print_ranked_athletes filtered =
-  let filename = String.cat (String.concat "-" (List.map (fun f->f.name) filtered.filters)) ".html" in
+  let filename = filters_to_fn filtered.filters in
   let handle = open_out filename in
   let out = Printf.fprintf handle in
   let results_rows = List.map athlete_to_to_results_row filtered.packets in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
+  print_header handle;
   out "<table border=2>";
   List.iter (fun (row:results_row)-> (* why is this type not inferred *)
       out "<tr>";
@@ -268,9 +281,10 @@ let () =
   let all_athletes = load_races_into_chunked_athletes () in
   let grouped = group_athletes all_athletes in
   let with_empty_filters = [{filters = []; packets = grouped}] in
+  (* todo: turn the following three lines into fold_left *)
   let filtered_gender = List.concat (List.map (apply_filters genderfilters) with_empty_filters) in
-  let filtered_age = List.concat(List.map (apply_filters age_filters) filtered_gender) in
-  let filtered_foreign = List.concat(List.map (apply_filters foreign_filters) filtered_age) in
+  let filtered_age = List.concat (List.map (apply_filters age_filters) filtered_gender) in
+  let filtered_foreign = List.concat (List.map (apply_filters foreign_filters) filtered_age) in
   List.iter print_ranked_athletes filtered_foreign
 
 
