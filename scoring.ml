@@ -249,15 +249,20 @@ let apply_filters filters op =
 
 let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points
 
-let filters_to_fn filters = String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html"
+let replace_filter filters replacing =
+  List.map (fun filter->if (filter.filtertype) = replacing.filtertype then replacing else filter) filters
 
-let print_header_row out (filter_row:(filter list)) =
+let filters_to_fn filters =
+  String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html"
+
+let print_header_row out  filters_used (filter_row:(filter list)) =
   Printf.fprintf out "<h2> %s : </h2> " ((List.hd filter_row).filtertype);
-  List.iter (fun f -> Printf.fprintf out "%s " f.name) filter_row;
+  List.iter (fun f -> let fn = filters_to_fn (replace_filter filters_used f) in
+                      Printf.fprintf out "<a href = \"%s\"> %s </a> &nbsp; " fn f.name) filter_row;
   Printf.fprintf out"<br>"
 
-let print_header out =
-  List.iter (print_header_row out) [genderfilters; age_filters; foreign_filters]
+let print_header out filters_used =
+  List.iter (print_header_row out filters_used) [genderfilters; age_filters; foreign_filters]
 
 
 
@@ -267,7 +272,7 @@ let print_ranked_athletes filtered =
   let out = Printf.fprintf handle in
   let results_rows = List.map athlete_to_to_results_row filtered.packets in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
-  print_header handle;
+  print_header handle filtered.filters;
   out "<table border=2>";
   List.iter (fun (row:results_row)-> (* why is this type not inferred *)
       out "<tr>";
