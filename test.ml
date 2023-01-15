@@ -36,6 +36,16 @@ let test3 () =
                assert (pr.foreign = true)
     | [] -> assert false
 
+let test4 () =
+  let parsed = line_to_athlete (1,Int 100) ",Soh Wai Ching,24,M,silly" in
+  match (List.of_seq parsed) with
+    | pr::_ ->
+               assert (pr.name = "WAI CHING SOH");
+               assert (pr.sex = M);
+               assert (pr.age = Some 24);
+               assert (pr.foreign = true)
+    | [] -> assert false
+
 let test_gender () =
   assert ((string_to_gender_and_foreign "*M") = Some M);
   assert ((string_to_gender_and_foreign "*Female") = Some F);
