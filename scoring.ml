@@ -264,7 +264,33 @@ let print_header_row out  filters_used (filter_row:(filter list)) =
 let print_header out filters_used =
   List.iter (print_header_row out filters_used) [genderfilters; age_filters; foreign_filters]
 
+let compare_header_and_rank packet1 packet2 =
+  let headercmp = String.compare packet1.header.race_name packet2.header.race_name in
+  if headercmp <> 0 then headercmp else  packet2.athlete.place - packet1.athlete.place
 
+let re_score_packet packet score =
+  let new_athlete = { packet.athlete with points = score } in
+  { packet with athlete = new_athlete }
+
+let maybe_update_iterator packet previous_name old_scores =
+  let points:int = packet.header.points in
+  if packet.header.race_name = previous_name then old_scores else (get_score_iterator points)
+
+let re_score_results (packets:athlete_packet list) =
+  let rec rescorer lst previous_name scores =
+    match lst with
+       | [] -> []
+       | packet::packets ->
+           let s2 = maybe_update_iterator packet previous_name scores in
+           let ((pos, score), scores) = Option.get (Seq.uncons s2) in
+           (re_score_packet packet score)::rescorer packets packet.header.race_name scores in
+  rescorer packets "" Seq.empty
+
+
+let flatten_and_sort_races (results:athlete_packet list list) =
+  List.concat results |>
+  List.sort compare_header_and_rank |>
+  re_score_results
 
 let print_ranked_athletes filtered =
   let filename = filters_to_fn filtered.filters in
