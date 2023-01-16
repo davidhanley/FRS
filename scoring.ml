@@ -303,8 +303,9 @@ let print_ranked_athletes filtered =
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   print_header handle filtered.filters;
   out "<table border=2>";
-  List.iter (fun (row:results_row)-> (* why is this type not inferred *)
+  List.iteri (fun i (row:results_row)-> (* why is this type not inferred *)
       out "<tr>";
+      Printf.fprintf handle "<td>%d</td>" (i+1);
       Printf.fprintf handle "<td>%s <br> %s <br> %f</td>" row.name row.age (Num.float_of_num row.points);
       List.iter (fun packet-> Printf.fprintf handle "<td> %s <br> %f</td>" packet.header.race_name (Num.float_of_num packet.athlete.points)) row.packets;
       out "</tr>\n" ) sorted_results;
