@@ -290,13 +290,15 @@ let re_score_results (packets:athlete_packet list) =
 let flatten_and_sort_races (results:athlete_packet list list) =
   List.concat results |>
   List.sort compare_header_and_rank |>
-  re_score_results
+  re_score_results |>
+  sort_athletes |>
+  group_athletes
 
 let print_ranked_athletes filtered =
   let filename = filters_to_fn filtered.filters in
   let handle = open_out filename in
   let out = Printf.fprintf handle in
-  let results_rows = List.map athlete_to_to_results_row filtered.packets in
+  let results_rows = List.map athlete_to_to_results_row (flatten_and_sort_races filtered.packets) in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   print_header handle filtered.filters;
   out "<table border=2>";
