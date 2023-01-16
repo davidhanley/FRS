@@ -266,7 +266,7 @@ let print_header out filters_used =
 
 let compare_header_and_rank packet1 packet2 =
   let headercmp = String.compare packet1.header.race_name packet2.header.race_name in
-  if headercmp <> 0 then headercmp else  packet2.athlete.place - packet1.athlete.place
+  if headercmp <> 0 then headercmp else  packet1.athlete.place - packet2.athlete.place
 
 let re_score_packet packet score =
   let new_athlete = { packet.athlete with points = score } in
