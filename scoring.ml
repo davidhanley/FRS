@@ -64,8 +64,10 @@ let file_to_strings fn =
       List.rev (reader [])
 
 
+let data_directory = "TowerRunningRaceData/"
+
 let load_name_translator () =
-  let lines = List.map split_on_commas (file_to_strings "data/translate.dat") in
+  let lines = List.map split_on_commas (file_to_strings (data_directory ^ "translate.dat")) in
   let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match translation with
@@ -75,7 +77,7 @@ let load_name_translator () =
 let translator = load_name_translator()
 
 let load_foreign_lookup () =
-  let lines = file_to_strings "data/foreign.dat" in
+  let lines = file_to_strings (data_directory ^ "foreign.dat") in
   let upcased_lines = List.map String.uppercase_ascii lines in
   let stringset = StringSet.of_seq (List.to_seq upcased_lines) in
   fun str->StringSet.mem (String.uppercase_ascii str) stringset
@@ -121,9 +123,9 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let read_a_race fn =
-  Printf.printf "Reading.. %s\n" fn;
-  let lines = file_to_strings fn in
+let read_a_race filename =
+  Printf.printf "Reading.. %s\n" filename;
+  let lines = file_to_strings filename in
   match lines with
   | name::date::_::points::rest ->
     let header = parse_header name date points in
@@ -149,7 +151,7 @@ let sort_athletes results =
    List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
 
 let load_races_into_chunked_athletes () =
-  let files = dir_contents "data" in
+  let files = dir_contents data_directory in
   let results = Seq.concat_map read_a_race files in
   let sorted_results = sort_athletes (List.of_seq results) in
   sorted_results
@@ -162,9 +164,8 @@ let age_option_to_string age_option =
 
 let age_match ao1 ao2 =
  match (ao1,ao2) with
- | (None,_) -> true
- | (_,None) -> true
  | (Some(a1),Some(a2)) -> (Int.abs (a2-a1)) < 2
+ | _ -> true
 
 let ath_match ao1 ao2 =
   (age_match ao1.age ao2.age) && (ao1.name = ao2.name)
