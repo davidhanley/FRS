@@ -182,10 +182,6 @@ let group_athletes (alist:athlete_packet list) =
         else grouper rest [a] (acc::out) in
  grouper alist [] []
 
-(* let float_cmp f1 f2 =
-  let fd = f1 -. f2 in
-  if fd < 0.0 then -1 else (if fd > 0.0 then 1 else 0)
-*)
 
 let compare_packets (a1:athlete_packet) (a2:athlete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
 
@@ -260,10 +256,13 @@ let filters_to_filename filters =
 let print_header_row out  filters_used (filter_row:(filter list)) =
   Printf.fprintf out "<h2> %s : </h2> " ((List.hd filter_row).filtertype);
   List.iter (fun f -> let fn = filters_to_filename (replace_filter filters_used f) in
-                      Printf.fprintf out "<a href = \"%s\"> %s </a> &nbsp; " fn f.name) filter_row;
+                      Printf.fprintf out "<a href = \"%s\"> %s </a> &nbsp; \n" fn f.name) filter_row;
   Printf.fprintf out"<br>"
 
 let print_header out filters_used =
+  let hs = (String.concat ", " (List.map (fun (f:filter)->f.name) filters_used)) in
+  Printf.fprintf out "<html><head><title>%s</title></head><body>" hs;
+  Printf.fprintf out "<h1>%s</h1>" hs;
   List.iter (print_header_row out filters_used) [genderfilters; age_filters; foreign_filters]
 
 let compare_header_and_rank packet1 packet2 =
