@@ -20,7 +20,7 @@ let test2 () =
   let parsed = line_to_athlete (1,Int 200) ",Wai Ching Soh,24,M,silly" in
   match (List.of_seq parsed) with
     | pr::_ ->
-               assert (pr.name = "WAI CHING SOH");
+               assert (pr.name = "SOH WAI CHING");
                assert (pr.sex = M);
                assert (pr.age = Some 24);
                assert (pr.foreign = true)
@@ -30,7 +30,7 @@ let test3 () =
   let parsed = line_to_athlete (1,Int 100) ",Soh Wai Ching,24,M,silly" in
   match (List.of_seq parsed) with
     | pr::_ ->
-               assert (pr.name = "WAI CHING SOH");
+               assert (pr.name = "SOH WAI CHING");
                assert (pr.sex = M);
                assert (pr.age = Some 24);
                assert (pr.foreign = true)
@@ -55,7 +55,7 @@ let test_gender () =
 let test_translate () =
   let tt = load_name_translator() in
   assert ((tt "dave hanley") = "david hanley");
-  assert ((tt "Soh waI ching") = "wai ching soh");
+  assert ((tt "WAI CHInG SOH") = "SOH WAI CHING");
   assert ((tt "bob toews") = "bob toews")
 
 let test_is_foreign () =
