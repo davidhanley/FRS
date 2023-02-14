@@ -102,10 +102,6 @@ let string_to_date str =
   let n i = List.nth parts i in
   { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
 
-let date_over_a_year_ago date now =
-  let (secs,_) = Unix.mktime date in
-    (int_of_float secs) + 365 * 24 * 60 * 60 < now
-
 type race_header = { race_name : string; date : tm; points : int }
 
 let parse_header name date_string points_string =
@@ -123,13 +119,17 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let read_a_race filename =
+let date_in_range now date  =
+  let (secs,_) = Unix.mktime date in
+    (int_of_float secs) + 365 * 24 * 60 * 60 < now
+
+let read_a_race date_ok filename  =
   Printf.printf "Reading.. %s\n" filename;
   let lines = file_to_strings filename in
   match lines with
   | name::date::_::points::rest ->
     let header = parse_header name date points in
-    if date_over_a_year_ago header.date (int_of_float (Unix.time ())) then begin
+    if date_ok header.date then begin
       Printf.printf "Too old, skipping...\n";
       Seq.empty
       end
@@ -152,7 +152,8 @@ let sort_athletes results =
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
-  let results = Seq.concat_map read_a_race files in
+  let date_ok = (date_in_range (int_of_float (Unix.time ()))) in
+  let results = Seq.concat_map (read_a_race date_ok) files  in
   let sorted_results = sort_athletes (List.of_seq results) in
   sorted_results
 
