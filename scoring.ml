@@ -113,12 +113,12 @@ let parse_header name date_string points_string =
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
-let get_score_iterator base_score =
-  let float_base = (Int 5) */ (Int base_score) in
-  Seq.map (fun position-> (position,float_base // ((Int 4) +/ (Int position)))) (Seq.ints 1)
+let get_score_sequence base_score =
+  let score_denominator = Int ( 5 * base_score) in
+  Seq.map (fun position-> (position,score_denominator // ((Int 4) +/ (Int position)))) (Seq.ints 1)
 
 let read_athletes lines base_points =
-  let points_iterator = get_score_iterator base_points in
+  let points_iterator = get_score_sequence base_points in
   (Seq.concat (Seq.map2 line_to_athlete points_iterator (List.to_seq lines)))
 
 type athlete_packet = { athlete: athlete; header: race_header }
@@ -141,7 +141,7 @@ let read_a_race filename =
 let compare_athletes a1 a2 =
   let r = String.compare a1.name a2.name in
   if r <> 0 then r else
-    match (a1.age,a2.age) with
+    match (a1.age, a2.age) with
     | (None, None) -> 0
     | (Some(_), None) -> 1
     | (None, Some(_)) -> -1
@@ -275,7 +275,7 @@ let re_score_packet packet score =
 
 let maybe_update_iterator packet previous_name old_scores =
   let points = packet.header.points in
-  if packet.header.race_name = previous_name then old_scores else (get_score_iterator points)
+  if packet.header.race_name = previous_name then old_scores else (get_score_sequence points)
 
 let re_score_results (packets:athlete_packet list) =
   let rec rescorer lst previous_name scores =
