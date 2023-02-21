@@ -55,7 +55,7 @@ let file_to_strings fn =
   let inf = open_in fn in
    let rec reader acc =
       try
-        let line = input_line inf in
+        let line = String.trim (input_line inf) in
         reader (line::acc)
       with _ ->
         close_in_noerr inf;
@@ -98,14 +98,18 @@ let line_to_athlete (position, points) str =
 
 
 let string_to_date str =
-  let parts = List.map int_of_string (Str.split (Str.regexp "-+") str) in
+  let itSplit = (Str.split (Str.regexp "-+") str) in
+  List.iter (fun f->Printf.printf "-%d-\n" (int_of_string f)) itSplit;
+  let parts = List.map int_of_string itSplit in
   let n i = List.nth parts i in
   { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
 
 type race_header = { race_name : string; date : tm; points : int }
 
 let parse_header name date_string points_string =
-    { race_name = name ; date = string_to_date date_string ; points = int_of_string points_string }
+  let d2 = string_to_date date_string and
+      p = int_of_string points_string in
+    { race_name = name ; date = d2 ; points = p }
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
@@ -119,17 +123,21 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let date_in_range now date  =
-  let (secs,_) = Unix.mktime date in
-    (int_of_float secs) + 365 * 24 * 60 * 60 < now
+let date_not_in_range now date  =
+  let (fsecs, _) = Unix.mktime date in
+  let secs = (int_of_float fsecs) in
+    secs + 365 * 24 * 60 * 60 < now || secs > now
 
-let read_a_race date_ok filename  =
+let now = (int_of_float (Unix.time ()))
+
+let read_a_race date_not_ok filename  =
   Printf.printf "Reading.. %s\n" filename;
   let lines = file_to_strings filename in
   match lines with
   | name::date::_::points::rest ->
+    Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
-    if date_ok header.date then begin
+    if date_not_in_range now header.date then begin
       Printf.printf "Too old, skipping...\n";
       Seq.empty
       end
@@ -152,8 +160,8 @@ let sort_athletes results =
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
-  let date_ok = (date_in_range (int_of_float (Unix.time ()))) in
-  let results = Seq.concat_map (read_a_race date_ok) files  in
+  let date_not_ok = date_not_in_range now in
+  let results = Seq.concat_map (read_a_race date_not_ok) files  in
   let sorted_results = sort_athletes (List.of_seq results) in
   sorted_results
 
@@ -313,7 +321,7 @@ let print_ranked_athletes filtered =
   out "</table>";
   close_out handle
 
-let () =
+let main() =
   let all_athletes = load_races_into_chunked_athletes () in
   let grouped = group_athletes all_athletes in
   let with_empty_filters = [{filters = []; packets = grouped}] in
@@ -322,6 +330,6 @@ let () =
           [genderfilters; age_filters; foreign_filters] in
   List.iter print_ranked_athletes filtered
 
-
+let () = main()
 
 

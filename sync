@@ -1,0 +1,1 @@
+rsync -vv *.html root@davidhanley.org:/var/www/html/trusa/content/
