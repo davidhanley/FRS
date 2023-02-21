@@ -126,7 +126,7 @@ type athlete_packet = { athlete: athlete; header: race_header }
 let date_not_in_range now date  =
   let (fsecs, _) = Unix.mktime date in
   let secs = (int_of_float fsecs) in
-    secs + 365 * 24 * 60 * 60 < now || secs > now
+    secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
 
 let now = (int_of_float (Unix.time ()))
 
