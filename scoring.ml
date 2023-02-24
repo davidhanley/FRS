@@ -96,9 +96,10 @@ let line_to_athlete (position, points) str =
         | None     -> Seq.empty
   with _ -> Seq.empty
 
+let first_commasep str = split_on_commas str |> List.hd
 
 let string_to_date str =
-  let itSplit = (Str.split (Str.regexp "-+") str) in
+  let itSplit = first_commasep str |> Str.split (Str.regexp "-+") in
   List.iter (fun f->Printf.printf "-%d-\n" (int_of_string f)) itSplit;
   let parts = List.map int_of_string itSplit in
   let n i = List.nth parts i in
@@ -108,8 +109,8 @@ type race_header = { race_name : string; date : tm; points : int }
 
 let parse_header name date_string points_string =
   let d2 = string_to_date date_string and
-      p = int_of_string points_string in
-    { race_name = name ; date = d2 ; points = p }
+      p = first_commasep points_string |> int_of_string  in
+    { race_name = first_commasep name ; date = d2 ; points = p }
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
