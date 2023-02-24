@@ -66,15 +66,20 @@ let test_take () =
   assert( take 5 [1;2] = [1;2]);
   assert( take 5 [1;2;3;4;5;6;7] = [1;2;3;4;5])
 
+let test_date() =
+  let d = string_to_date "2023-1-25" in
+  assert( d.tm_year = 123)
 
-let () = test1();
+let () = test_date();
+         test1();
          test2();
          test3();
          test_split();
          test_gender();
          test_translate();
          test_is_foreign();
-         test_take()
+         test_take();
+
 
 
 
