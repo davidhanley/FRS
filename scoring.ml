@@ -48,7 +48,7 @@ let string_to_gender_and_foreign str =
 
 
 let comma_regex = (Str.regexp ",")
-let split_on_commas = Str.split_delim comma_regex
+let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
 
 
 let file_to_strings fn =
@@ -100,7 +100,6 @@ let first_commasep str = split_on_commas str |> List.hd
 
 let string_to_date str =
   let itSplit = first_commasep str |> Str.split (Str.regexp "-+") in
-  List.iter (fun f->Printf.printf "-%d-\n" (int_of_string f)) itSplit;
   let parts = List.map int_of_string itSplit in
   let n i = List.nth parts i in
   { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
