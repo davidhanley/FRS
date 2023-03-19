@@ -51,17 +51,14 @@ let comma_regex = (Str.regexp ",")
 let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
 
 
-let file_to_strings fn =
-  let inf = open_in fn in
-   let rec reader acc =
-      try
-        let line = String.trim (input_line inf) in
-        reader (line::acc)
-      with _ ->
-        close_in_noerr inf;
-        acc
-    in
-      List.rev (reader [])
+let file_to_strings filename =
+  let inf = open_in filename in
+  let lines = Seq.of_dispenser (fun () ->
+                                 try Some(String.trim (input_line inf))
+                                 with _ -> None ) in
+  List.of_seq lines
+
+
 
 
 let data_directory = "TowerRunningRaceData/"
@@ -130,14 +127,12 @@ let date_not_in_range now date  =
 
 let now = (int_of_float (Unix.time ()))
 
-let read_a_race date_not_ok filename  =
-  Printf.printf "Reading.. %s\n" filename;
-  let lines = file_to_strings filename in
+let race_list_to_strings lines skip_race_for_date =
   match lines with
   | name::date::_::points::rest ->
     Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
-    if date_not_in_range now header.date then begin
+    if skip_race_for_date header.date then begin
       Printf.printf "Too old, skipping...\n";
       Seq.empty
       end
@@ -145,6 +140,11 @@ let read_a_race date_not_ok filename  =
       let athletes = read_athletes rest header.points in
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
+
+let read_a_race date_not_ok filename  =
+  Printf.printf "Reading.. %s\n" filename;
+  let lines = file_to_strings filename in
+  race_list_to_strings lines date_not_ok
 
 let compare_athletes a1 a2 =
   let r = String.compare a1.name a2.name in
