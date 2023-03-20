@@ -48,26 +48,23 @@ let string_to_gender_and_foreign str =
 
 
 let comma_regex = (Str.regexp ",")
-let split_on_commas = Str.split_delim comma_regex
+let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
 
 
-let file_to_strings fn =
-  let inf = open_in fn in
-   let rec reader acc =
-      try
-        let line = String.trim (input_line inf) in
-        reader (line::acc)
-      with _ ->
-        close_in_noerr inf;
-        acc
-    in
-      List.rev (reader [])
+let file_to_strings filename =
+  let inf = open_in filename in
+  let lines = Seq.of_dispenser (fun () ->
+                                 try Some(List.map String.trim (split_on_commas (input_line inf)))
+                                 with _ -> None ) in
+  lines
+
+
 
 
 let data_directory = "TowerRunningRaceData/"
 
 let load_name_translator () =
-  let lines = List.map split_on_commas (file_to_strings (data_directory ^ "translate.dat")) in
+  let lines = List.of_seq (file_to_strings (data_directory ^ "translate.dat")) in
   let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match translation with
@@ -77,16 +74,15 @@ let load_name_translator () =
 let translator = load_name_translator()
 
 let load_foreign_lookup () =
-  let lines = file_to_strings (data_directory ^ "foreign.dat") in
+  let lines = List.map List.hd (List.of_seq (file_to_strings (data_directory ^ "foreign.dat"))) in
   let upcased_lines = List.map String.uppercase_ascii lines in
   let stringset = StringSet.of_seq (List.to_seq upcased_lines) in
   fun str->StringSet.mem (String.uppercase_ascii str) stringset
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete (position, points) str =
+let line_to_athlete (position, points) split_line =
   try
-    let split_line = split_on_commas str in
     let column idx = List.nth split_line idx in
     let gender_option = string_to_gender_and_foreign (column 3) and
       age = string_to_int_option (column 2)  in
@@ -100,7 +96,6 @@ let first_commasep str = split_on_commas str |> List.hd
 
 let string_to_date str =
   let itSplit = first_commasep str |> Str.split (Str.regexp "-+") in
-  List.iter (fun f->Printf.printf "-%d-\n" (int_of_string f)) itSplit;
   let parts = List.map int_of_string itSplit in
   let n i = List.nth parts i in
   { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
@@ -114,13 +109,25 @@ let parse_header name date_string points_string =
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
+
 let get_score_sequence base_score =
-  let score_denominator = Int ( 5 * base_score) in
-  Seq.map (fun position-> (position,score_denominator // ((Int 4) +/ (Int position)))) (Seq.ints 1)
+  let score_denominator = Int (5 * base_score) in
+  Seq.map (fun position-> (position, score_denominator // ((Int 4) +/ (Int position)))) (Seq.ints 1)
+
+let rec dedupe_athletes athletes set =
+  match (Seq.uncons athletes) with
+      None -> Seq.empty
+    | Some(athlete, tail) ->
+        if StringSet.mem athlete.name set
+          then dedupe_athletes tail set
+          else Seq.cons athlete (dedupe_athletes tail (StringSet.add athlete.name set))
+
 
 let read_athletes lines base_points =
-  let points_iterator = get_score_sequence base_points in
-  (Seq.concat (Seq.map2 line_to_athlete points_iterator (List.to_seq lines)))
+  let points_sequence = get_score_sequence base_points in
+  let read_and_scored = Seq.concat (Seq.map2 line_to_athlete points_sequence lines) in
+  dedupe_athletes read_and_scored StringSet.empty
+
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
@@ -129,23 +136,27 @@ let date_not_in_range now date  =
   let secs = (int_of_float fsecs) in
     secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
 
-let now = (int_of_float (Unix.time ()))
+let now_msecs = (int_of_float (Unix.time ()))
 
-let read_a_race date_not_ok filename  =
-  Printf.printf "Reading.. %s\n" filename;
-  let lines = file_to_strings filename in
-  match lines with
-  | name::date::_::points::rest ->
+let race_list_to_strings lines skip_race_for_date =
+  let first_4 = List.of_seq (Seq.take 4 lines) in
+  match first_4 with
+  | (name::_)::(date::_)::_::(points::_)::_ ->
     Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
-    if date_not_in_range now header.date then begin
+    if skip_race_for_date header.date then begin
       Printf.printf "Too old, skipping...\n";
       Seq.empty
       end
     else
-      let athletes = read_athletes rest header.points in
+      let athletes = read_athletes (Seq.drop 4 lines) header.points in
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
+
+let read_a_race date_not_ok filename  =
+  Printf.printf "Reading.. %s\n" filename;
+  let lines = file_to_strings filename in
+  race_list_to_strings lines date_not_ok
 
 let compare_athletes a1 a2 =
   let r = String.compare a1.name a2.name in
@@ -161,9 +172,9 @@ let sort_athletes results =
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
-  let date_not_ok = date_not_in_range now in
-  let results = Seq.concat_map (read_a_race date_not_ok) files  in
-  let sorted_results = sort_athletes (List.of_seq results) in
+  let date_not_ok = date_not_in_range now_msecs in
+  let results = List.of_seq ( Seq.concat_map (read_a_race date_not_ok) files)  in
+  let sorted_results = sort_athletes results in
   sorted_results
 
 let age_option_to_string age_option =
@@ -173,15 +184,15 @@ let age_option_to_string age_option =
 
 
 let age_match ao1 ao2 =
- match (ao1,ao2) with
- | (Some(a1),Some(a2)) -> (Int.abs (a2-a1)) < 2
+ match (ao1, ao2) with
+ | (Some(a1), Some(a2)) -> (Int.abs (a2-a1)) < 2
  | _ -> true
 
 let ath_match ao1 ao2 =
   (age_match ao1.age ao2.age) && (ao1.name = ao2.name)
 
-let group_athletes (alist:athlete_packet list) =
- let rec grouper (lst:athlete_packet list) acc out =
+let group_athletes alist =
+ let rec grouper lst acc out =
    match (lst,acc) with
    | ([],[]) -> out
    | ([],_) -> acc::out
@@ -195,13 +206,9 @@ let group_athletes (alist:athlete_packet list) =
 
 let compare_packets (a1:athlete_packet) (a2:athlete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
 
-let rec take n lst =
-  match lst with
-  | [] -> []
-  | f::rest -> if n < 1 then [] else f::(take (n-1) rest)
-
+let intZero = (Int 0)
 let scored_points results =
-   List.fold_left (fun x y -> x +/ y.athlete.points) (Int 0) (take 5 results)
+   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero (Seq.take 5 (List.to_seq results))
 
 type results_row = { name : string; points : num; packets : athlete_packet list; age : string}
 
@@ -331,6 +338,6 @@ let main() =
           [genderfilters; age_filters; foreign_filters] in
   List.iter print_ranked_athletes filtered
 
-let () = main()
+(* let () = main() *)
 
 
