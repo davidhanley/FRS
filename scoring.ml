@@ -109,13 +109,25 @@ let parse_header name date_string points_string =
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
+
 let get_score_sequence base_score =
-  let score_denominator = Int ( 5 * base_score) in
-  Seq.map (fun position-> (position,score_denominator // ((Int 4) +/ (Int position)))) (Seq.ints 1)
+  let score_denominator = Int (5 * base_score) in
+  Seq.map (fun position-> (position, score_denominator // ((Int 4) +/ (Int position)))) (Seq.ints 1)
+
+let rec dedupe_athletes athletes set =
+  match (Seq.uncons athletes) with
+      None -> Seq.empty
+    | Some(athlete, tail) ->
+        if StringSet.mem athlete.name set
+          then dedupe_athletes tail set
+          else Seq.cons athlete (dedupe_athletes tail (StringSet.add athlete.name set))
+
 
 let read_athletes lines base_points =
-  let points_iterator = get_score_sequence base_points in
-  (Seq.concat (Seq.map2 line_to_athlete points_iterator lines))
+  let points_sequence = get_score_sequence base_points in
+  let read_and_scored = Seq.concat (Seq.map2 line_to_athlete points_sequence lines) in
+  dedupe_athletes read_and_scored StringSet.empty
+
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
@@ -326,6 +338,6 @@ let main() =
           [genderfilters; age_filters; foreign_filters] in
   List.iter print_ranked_athletes filtered
 
-let () = main()
+(* let () = main() *)
 
 
