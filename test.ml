@@ -7,7 +7,7 @@ let test_split() =
   assert ((List.length ss) = 4)
 
 let test1 () =
-  let parsed = line_to_athlete  (1,Int 100) ",dave hanley,49,M,silly"   in
+  let parsed = line_to_athlete  (1,Int 100) (split_on_commas ",dave hanley,49,M,silly")   in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "DAVID HANLEY");
@@ -17,7 +17,7 @@ let test1 () =
     | [] -> assert false
 
 let test2 () =
-  let parsed = line_to_athlete (1,Int 200) ",Wai Ching Soh,24,M,silly" in
+  let parsed = line_to_athlete (1,Int 200) (split_on_commas ",Wai Ching Soh,24,M,silly") in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "SOH WAI CHING");
@@ -27,7 +27,7 @@ let test2 () =
     | [] -> assert false
 
 let test3 () =
-  let parsed = line_to_athlete (1,Int 100) ",Soh Wai Ching,24,M,silly" in
+  let parsed = line_to_athlete (1, Int 100) (split_on_commas ",Soh Wai Ching,24,M,silly") in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "SOH WAI CHING");
@@ -37,7 +37,7 @@ let test3 () =
     | [] -> assert false
 
 let test4 () =
-  let parsed = line_to_athlete (1,Int 100) ",Soh Wai Ching,24,M,silly" in
+  let parsed = line_to_athlete (1, Int 100) (split_on_commas ",Soh Wai Ching,24,M,silly") in
   match (List.of_seq parsed) with
     | pr::_ ->
                assert (pr.name = "WAI CHING SOH");
@@ -63,8 +63,8 @@ let test_is_foreign () =
   assert (foreign_lookup "dave hanley" = false)
 
 let test_take () =
-  assert( take 5 [1;2] = [1;2]);
-  assert( take 5 [1;2;3;4;5;6;7] = [1;2;3;4;5])
+  assert(take 5 [1;2] = [1;2]);
+  assert(take 5 [1;2;3;4;5;6;7] = [1;2;3;4;5])
 
 let test_date() =
   let d = string_to_date "2023-1-25" in

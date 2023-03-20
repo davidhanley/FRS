@@ -54,9 +54,9 @@ let split_on_commas str = Str.split_delim comma_regex str |> List.map String.tri
 let file_to_strings filename =
   let inf = open_in filename in
   let lines = Seq.of_dispenser (fun () ->
-                                 try Some(String.trim (input_line inf))
+                                 try Some(List.map String.trim (split_on_commas (input_line inf)))
                                  with _ -> None ) in
-  List.of_seq lines
+  lines
 
 
 
@@ -64,7 +64,7 @@ let file_to_strings filename =
 let data_directory = "TowerRunningRaceData/"
 
 let load_name_translator () =
-  let lines = List.map split_on_commas (file_to_strings (data_directory ^ "translate.dat")) in
+  let lines = List.of_seq (file_to_strings (data_directory ^ "translate.dat")) in
   let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match translation with
@@ -74,16 +74,15 @@ let load_name_translator () =
 let translator = load_name_translator()
 
 let load_foreign_lookup () =
-  let lines = file_to_strings (data_directory ^ "foreign.dat") in
+  let lines = List.map List.hd (List.of_seq (file_to_strings (data_directory ^ "foreign.dat"))) in
   let upcased_lines = List.map String.uppercase_ascii lines in
   let stringset = StringSet.of_seq (List.to_seq upcased_lines) in
   fun str->StringSet.mem (String.uppercase_ascii str) stringset
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete (position, points) str =
+let line_to_athlete (position, points) split_line =
   try
-    let split_line = split_on_commas str in
     let column idx = List.nth split_line idx in
     let gender_option = string_to_gender_and_foreign (column 3) and
       age = string_to_int_option (column 2)  in
@@ -116,7 +115,7 @@ let get_score_sequence base_score =
 
 let read_athletes lines base_points =
   let points_iterator = get_score_sequence base_points in
-  (Seq.concat (Seq.map2 line_to_athlete points_iterator (List.to_seq lines)))
+  (Seq.concat (Seq.map2 line_to_athlete points_iterator lines))
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
@@ -128,8 +127,9 @@ let date_not_in_range now date  =
 let now = (int_of_float (Unix.time ()))
 
 let race_list_to_strings lines skip_race_for_date =
-  match lines with
-  | name::date::_::points::rest ->
+  let first_4 = List.of_seq (Seq.take 4 lines) in
+  match first_4 with
+  | (name::_)::(date::_)::_::(points::_)::_ ->
     Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
     if skip_race_for_date header.date then begin
@@ -137,7 +137,7 @@ let race_list_to_strings lines skip_race_for_date =
       Seq.empty
       end
     else
-      let athletes = read_athletes rest header.points in
+      let athletes = read_athletes (Seq.drop 4 lines) header.points in
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
 
@@ -161,8 +161,8 @@ let sort_athletes results =
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
   let date_not_ok = date_not_in_range now in
-  let results = Seq.concat_map (read_a_race date_not_ok) files  in
-  let sorted_results = sort_athletes (List.of_seq results) in
+  let results = List.of_seq ( Seq.concat_map (read_a_race date_not_ok) files)  in
+  let sorted_results = sort_athletes results in
   sorted_results
 
 let age_option_to_string age_option =
@@ -172,8 +172,8 @@ let age_option_to_string age_option =
 
 
 let age_match ao1 ao2 =
- match (ao1,ao2) with
- | (Some(a1),Some(a2)) -> (Int.abs (a2-a1)) < 2
+ match (ao1, ao2) with
+ | (Some(a1), Some(a2)) -> (Int.abs (a2-a1)) < 2
  | _ -> true
 
 let ath_match ao1 ao2 =
@@ -194,13 +194,9 @@ let group_athletes (alist:athlete_packet list) =
 
 let compare_packets (a1:athlete_packet) (a2:athlete_packet) = Num.compare_num a2.athlete.points a1.athlete.points
 
-let rec take n lst =
-  match lst with
-  | [] -> []
-  | f::rest -> if n < 1 then [] else f::(take (n-1) rest)
-
+let intZero = (Int 0)
 let scored_points results =
-   List.fold_left (fun x y -> x +/ y.athlete.points) (Int 0) (take 5 results)
+   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero (Seq.take 5 (List.to_seq results))
 
 type results_row = { name : string; points : num; packets : athlete_packet list; age : string}
 
