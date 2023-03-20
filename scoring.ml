@@ -59,8 +59,6 @@ let file_to_strings filename =
   lines
 
 
-
-
 let data_directory = "TowerRunningRaceData/"
 
 let load_name_translator () =
@@ -149,7 +147,7 @@ let race_list_to_strings lines skip_race_for_date =
       Seq.empty
       end
     else
-      let athletes = read_athletes (Seq.drop 4 lines) header.points in
+      let athletes = read_athletes lines header.points in
         Seq.map (fun ath->{athlete = ath; header=header}) athletes
   | _ -> Seq.empty
 
@@ -290,7 +288,7 @@ let re_score_packet packet score =
   let new_athlete = { packet.athlete with points = score } in
   { packet with athlete = new_athlete }
 
-let maybe_update_iterator packet previous_name old_scores =
+let maybe_update_score_seq packet previous_name old_scores =
   let points = packet.header.points in
   if packet.header.race_name = previous_name then old_scores else (get_score_sequence points)
 
@@ -299,16 +297,16 @@ let re_score_results (packets:athlete_packet list) =
     match lst with
        | [] -> []
        | packet::packets ->
-           let s2 = maybe_update_iterator packet previous_name scores in
+           let s2 = maybe_update_score_seq packet previous_name scores in
            let ((pos, score), scores) = Option.get (Seq.uncons s2) in
            (re_score_packet packet score)::rescorer packets packet.header.race_name scores in
   rescorer packets "" Seq.empty
 
 
-let flatten_and_sort_races (results:athlete_packet list list) =
+let flatten_and_sort_races (results:athlete_packet list list) extra =
   List.concat results |>
   List.sort compare_header_and_rank |>
-  re_score_results |>
+  extra |>
   sort_athletes |>
   group_athletes
 
@@ -316,7 +314,7 @@ let print_ranked_athletes filtered =
   let filename = filters_to_filename filtered.filters in
   let handle = open_out filename in
   let out = Printf.fprintf handle in
-  let results_rows = List.map athlete_to_to_results_row (flatten_and_sort_races filtered.packets) in
+  let results_rows = List.map athlete_to_to_results_row (flatten_and_sort_races filtered.packets (fun x->x)) in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   print_header handle filtered.filters;
   out "<table border=2>";
@@ -335,9 +333,13 @@ let main() =
   let with_empty_filters = [{filters = []; packets = grouped}] in
   (* todo: turn the following three lines into fold_left *)
   let filtered = List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) with_empty_filters
-          [genderfilters; age_filters; foreign_filters] in
-  List.iter print_ranked_athletes filtered
+          [genderfilters; foreign_filters] in
 
-(* let () = main() *)
+  let f2 = List.map (fun filter->{filters=filter.filters; packets=flatten_and_sort_races filter.packets re_score_results}) filtered in
+  let filtered3 = List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) f2
+            [ age_filters ] in
+  List.iter print_ranked_athletes filtered3
+
+let () = main()
 
 
