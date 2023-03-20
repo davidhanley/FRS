@@ -124,7 +124,7 @@ let date_not_in_range now date  =
   let secs = (int_of_float fsecs) in
     secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
 
-let now = (int_of_float (Unix.time ()))
+let now_msecs = (int_of_float (Unix.time ()))
 
 let race_list_to_strings lines skip_race_for_date =
   let first_4 = List.of_seq (Seq.take 4 lines) in
@@ -160,7 +160,7 @@ let sort_athletes results =
 
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
-  let date_not_ok = date_not_in_range now in
+  let date_not_ok = date_not_in_range now_msecs in
   let results = List.of_seq ( Seq.concat_map (read_a_race date_not_ok) files)  in
   let sorted_results = sort_athletes results in
   sorted_results
@@ -179,8 +179,8 @@ let age_match ao1 ao2 =
 let ath_match ao1 ao2 =
   (age_match ao1.age ao2.age) && (ao1.name = ao2.name)
 
-let group_athletes (alist:athlete_packet list) =
- let rec grouper (lst:athlete_packet list) acc out =
+let group_athletes alist =
+ let rec grouper lst acc out =
    match (lst,acc) with
    | ([],[]) -> out
    | ([],_) -> acc::out
