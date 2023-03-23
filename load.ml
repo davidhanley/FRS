@@ -90,7 +90,7 @@ let string_to_date str =
   let itSplit = Str.split (Str.regexp "-+") str in
   let parts = List.map int_of_string itSplit in
   let n i = List.nth parts i in
-  { tm_year = (n 0)-1900; tm_mon = n 1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
+  { tm_year = (n 0)-1900; tm_mon = (n 1)-1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
 
 type race_header = { race_name : string; date : tm; points : int }
 
@@ -125,10 +125,10 @@ type athlete_packet = { athlete: athlete; header: race_header }
 
 let date_not_in_range now date  =
   let (fsecs, _) = Unix.mktime date in
-  let secs = (int_of_float fsecs) in
-    secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
+  let race_secs = (int_of_float fsecs) in
+    race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
 
-let now_msecs = (int_of_float (Unix.time ()))
+let now_msecs = int_of_float (Unix.time ())
 
 let race_list_to_strings lines skip_race_for_date =
   let first_4 = List.of_seq (Seq.take 4 lines) in

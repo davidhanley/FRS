@@ -5,7 +5,7 @@ scoring : scoring.ml
 #	./test
 
 test : test.ml scoring.ml
-	ocamlfind ocamlc -g -package ounit2 -package num str.cma nums.cma unix.cma scoring.ml test.ml -o test
+	ocamlfind ocamlc -g -package ounit2 -package num str.cma nums.cma unix.cma load.ml scoring.ml test.ml -o test
 
 clean:
-	rm -f *.cmi *.cmo test *.html scoring
+	rm -f *.cmi *.cmo test *.html scoring test

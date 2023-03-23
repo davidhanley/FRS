@@ -5,8 +5,6 @@ open Option
 open Num
 open Load
 
-
-
 let compare_athletes a1 a2 =
   let r = String.compare a1.name a2.name in
   if r <> 0 then r else
@@ -88,8 +86,8 @@ let make_age_filter = make_filter "age"
 let ranges = [None; Some(0,9); Some(10,19); Some(20,29); Some(30,39); Some(40,49); Some(50,59); Some(60,69); Some(70,79); Some (80,89); Some(90,99)]
 let range_to_string r =
   match r with
-    | None->"all_ages"
-    | Some(lo, hi) -> Printf.sprintf "%d-%d" lo hi
+    | None->"All_ages"
+    | Some(lo, hi) -> Printf.sprintf "%d_%d" lo hi
 let age_filters = List.map (fun t-> make_age_filter (range_to_string t) (filter_age t)) ranges
 
 let make_foreign_filter = make_filter "foreign"
@@ -119,16 +117,16 @@ let replace_filter filters replacing =
 let filters_to_filename filters =
   String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html"
 
-let print_header_row out  filters_used (filter_row:(filter list)) =
+let print_header_row out filters_used (filter_row:(filter list)) =
   Printf.fprintf out "<h2> %s : </h2> " ((List.hd filter_row).filtertype);
   List.iter (fun f -> let fn = filters_to_filename (replace_filter filters_used f) in
                       Printf.fprintf out "<a href = \"%s\"> %s </a> &nbsp; \n" fn f.name) filter_row;
   Printf.fprintf out"<br>"
 
 let print_header out filters_used =
-  let hs = (String.concat ", " (List.map (fun (f:filter)->f.name) filters_used)) in
-  Printf.fprintf out "<html><head><title>%s</title></head><body>" hs;
-  Printf.fprintf out "<h1>%s</h1>" hs;
+  let header_string = (String.concat ", " (List.map (fun (f:filter)->f.name) filters_used)) in
+  Printf.fprintf out "<html><head><title>%s</title></head><body>" header_string;
+  Printf.fprintf out "<h1>%s</h1>" header_string;
   List.iter (print_header_row out filters_used) [genderfilters; age_filters; foreign_filters]
 
 let compare_header_and_rank packet1 packet2 =
@@ -162,7 +160,7 @@ let flatten_and_sort_races (results:athlete_packet list list) extra =
   group_athletes
 
 let print_ranked_athletes filtered =
-  let filename = filters_to_filename filtered.filters in
+  let filename = "content/" ^ (filters_to_filename filtered.filters) in
   let handle = open_out filename in
   let out = Printf.fprintf handle in
   let results_rows = List.map athlete_to_to_results_row (flatten_and_sort_races filtered.packets (fun x->x)) in
