@@ -1,6 +1,5 @@
 
-open Str
-open Char
+
 open Option
 open Num
 open Load
@@ -143,7 +142,7 @@ let maybe_update_score_seq packet previous_name old_scores =
   let points = packet.header.points in
   if packet.header.race_name = previous_name then old_scores else (get_score_sequence points)
 
-let re_score_results (packets:athlete_packet list) =
+let re_score_results packets =
   let rec rescorer lst previous_name scores =
     match lst with
        | [] -> []
