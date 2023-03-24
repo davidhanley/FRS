@@ -1,5 +1,3 @@
-
-
 open Option
 open Num
 open Load
@@ -113,6 +111,16 @@ let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.point
 let replace_filter filters replacing =
   List.map (fun filter->if (filter.filtertype) = replacing.filtertype then replacing else filter) filters
 
+
+let apply_filters_to_grouped_athlete_packets apply_scoring grouped =
+  let with_empty_filters = [{filters = []; packets = grouped}] in
+  (* todo: turn the following three lines into fold_left *)
+  let filtered = List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) with_empty_filters
+          [genderfilters; foreign_filters] in
+  let f2 = apply_scoring filtered in
+  List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) f2 [age_filters]
+
+
 let filters_to_filename filters =
   String.cat (String.concat "-" (List.map (fun f->f.name) filters)) ".html"
 
@@ -152,7 +160,6 @@ let re_score_results packets =
            (re_score_packet packet score)::rescorer packets packet.header.race_name scores in
   rescorer packets "" Seq.empty
 
-
 let flatten_and_sort_races (results:athlete_packet list list) extra =
   List.concat results |>
   List.sort compare_header_and_rank |>
@@ -177,18 +184,14 @@ let print_ranked_athletes filtered =
   out "</table>";
   close_out handle
 
-let main() =
-  let all_athletes = load_races_into_chunked_athletes () in
-  let grouped = group_athletes all_athletes in
-  let with_empty_filters = [{filters = []; packets = grouped}] in
-  (* todo: turn the following three lines into fold_left *)
-  let filtered = List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) with_empty_filters
-          [genderfilters; foreign_filters] in
+let apply_scoring filtered =
+  List.map (fun filter->{filters=filter.filters; packets=flatten_and_sort_races filter.packets re_score_results}) filtered
 
-  let f2 = List.map (fun filter->{filters=filter.filters; packets=flatten_and_sort_races filter.packets re_score_results}) filtered in
-  let filtered3 = List.fold_left (fun acc filter-> List.concat (List.map (apply_filters filter) acc)) f2
-            [ age_filters ] in
-  List.iter print_ranked_athletes filtered3
+let main() =
+  load_races_into_chunked_athletes () |>
+  group_athletes |>
+  apply_filters_to_grouped_athlete_packets apply_scoring |>
+  List.iter print_ranked_athletes
 
 let () = main()
 
