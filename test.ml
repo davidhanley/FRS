@@ -1,6 +1,8 @@
 open OUnit2
-open Scoring
 open Num
+
+open Scoring
+open Load
 
 let test_split() =
   let ss = split_on_commas ",dave,12,M" in
@@ -77,6 +79,12 @@ let test_dedupe_athletes () =
   let filterd = dedupe_athletes (List.to_seq athletes_to_dedupe) StringSet.empty in
     assert( (Seq.length filterd) = 3)
 
+let test_time_range() =
+  let check_curr_unix_time = date_not_in_range 1679447229 in (* unix time taken on mar 21 2023 *)
+  let check_not_in_range date_string = check_curr_unix_time (string_to_date date_string) in
+  assert( check_not_in_range "2023-3-20" = false );
+  assert( check_not_in_range "2022-3-19" = true )
+
 
 let () = test_date();
          test1();
@@ -87,6 +95,7 @@ let () = test_date();
          test_translate();
          test_is_foreign();
          test_dedupe_athletes();
+         test_time_range()
 
 
 

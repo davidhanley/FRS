@@ -1,1 +1,1 @@
-rsync -vvz *.html root@davidhanley.org:/var/www/html/trusa/content/
+rsync -vvr --delete-before --ignore-errors content root@davidhanley.org:/var/www/html/trusa/
