@@ -42,10 +42,8 @@ let string_to_gender_and_foreign str =
       | _   -> string_to_gender str
   with _ -> None
 
-
 let comma_regex = (Str.regexp ",")
 let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
-
 
 let file_to_strings filename =
   let inf = open_in filename in
@@ -53,7 +51,6 @@ let file_to_strings filename =
                                  try Some(List.map String.trim (split_on_commas (input_line inf)))
                                  with _ -> None ) in
   lines
-
 
 let data_directory = "TowerRunningRaceData/"
 
@@ -114,12 +111,10 @@ let rec dedupe_athletes athletes set =
           then dedupe_athletes tail set
           else Seq.cons athlete (dedupe_athletes tail (StringSet.add athlete.name set))
 
-
 let read_athletes lines base_points =
   let points_sequence = get_score_sequence base_points in
   let read_and_scored = Seq.concat (Seq.map2 line_to_athlete points_sequence lines) in
   dedupe_athletes read_and_scored StringSet.empty
-
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
