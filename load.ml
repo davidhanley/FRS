@@ -60,7 +60,7 @@ let load_name_translator () =
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match translation with
       | None -> name
-      | Some (_,translated) -> translated )
+      | Some (_,translated) -> String.uppercase_ascii translated )
 
 let translator = load_name_translator()
 
@@ -72,14 +72,21 @@ let load_foreign_lookup () =
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete (position, points) split_line =
+(* todo: what if there are 2 spaces in the middle of a name? *)
+let digits = Str.regexp "[0-9]"
+let clean_name name_str =
+  String.uppercase_ascii name_str |>
+  translator |>
+  Str.global_replace digits ""
+
+let line_to_athlete (place, points) split_line =
   try
     let column idx = List.nth split_line idx in
     let gender_option = string_to_gender_and_foreign (column 3) and
       age = string_to_int_option (column 2)  in
-    let fixed_name:string = String.uppercase_ascii (translator (column 1)) in
+    let name = clean_name (column 1) in
       match gender_option with
-        | Some(gender) -> List.to_seq [{name = fixed_name ; sex = gender ; age = age ; foreign = foreign_lookup fixed_name; place = position; points = points}]
+        | Some(sex) -> List.to_seq [{name ; sex ;  age ; foreign = foreign_lookup name; place ; points }]
         | None     -> Seq.empty
   with _ -> Seq.empty
 

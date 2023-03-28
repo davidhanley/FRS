@@ -51,18 +51,21 @@ let group_athletes alist =
 
 let compare_packets packet1 packet2 = Num.compare_num packet2.athlete.points packet1.athlete.points
 
-let intZero = (Int 0)
-let scored_points results =
-   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero (Seq.take 5 (List.to_seq results))
+let intZero = Int 0
+
+let scored_points sorted =
+   List.to_seq sorted |>
+   Seq.take 5 |>
+   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero
 
 type results_row = { name : string; points : num; packets : athlete_packet list; age : string}
 
 let athlete_to_to_results_row packets =
   let sorted = List.sort compare_packets packets in
   let scored_points = scored_points sorted in
-  let first = (List.hd packets) in
-  let name = first.athlete.name and
-      age  = first.athlete.age in
+  let first = (List.hd packets).athlete in
+  let name = first.name and
+      age  = first.age in
   {name = name; points = scored_points; packets = sorted ; age = age_option_to_string age}
 
 let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points

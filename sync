@@ -1,1 +1,1 @@
-rsync -vvr --delete-before --ignore-errors content root@davidhanley.org:/var/www/html/trusa/
+rsync -vvr --delete-before --ignore-errors content root@davidhanley.org:/var/www/towerrunningusa/
