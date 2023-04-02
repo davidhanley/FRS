@@ -25,9 +25,15 @@ let date_not_in_range now date  =
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
   let date_not_ok = date_not_in_range now_msecs in
-  let results = List.of_seq (Seq.concat_map (read_a_race date_not_ok) files)  in
+  let races_read = Seq.map (read_a_race date_not_ok) files in
+  let headers = Seq.concat_map (fun u->
+      match (Seq.uncons u) with
+        Some(n,_) -> List.to_seq [n.header]
+        | None -> Seq.empty
+        ) races_read in
+  let results = List.of_seq (Seq.concat races_read)  in
   let sorted_results = sort_athletes results in
-  sorted_results
+  (sorted_results, List.of_seq headers )
 
 let age_option_to_string age_option =
   match age_option with
@@ -142,9 +148,19 @@ let print_ranked_athletes filtered =
 let apply_scoring filtered =
   List.map (fun filter->{filters=filter.filters; packets=flatten_and_sort_races filter.packets re_score_results}) filtered
 
+let output_race_list headers =
+  let handle = open_out "content/races.html" in
+  let out = Printf.fprintf handle in
+  out "<ul>\n";
+  List.iter (fun f->Printf.fprintf handle "<li>%s</li>\n" f.race_name) headers;
+  out "</ul>\n";
+  close_out_noerr handle
+
+
 let main() =
-  load_races_into_chunked_athletes () |>
-  group_athletes |>
+  let (races, headers) = load_races_into_chunked_athletes () in
+  output_race_list headers;
+  group_athletes races |>
   apply_filters_to_grouped_athlete_packets apply_scoring |>
   List.iter print_ranked_athletes
 
