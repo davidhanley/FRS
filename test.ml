@@ -56,7 +56,7 @@ let test_gender () =
 
 let test_translate () =
   let tt = load_name_translator() in
-  assert ((tt "dave hanley") = "david hanley");
+  assert ((tt "dave hanley") = "DAVID HANLEY");
   assert ((tt "WAI CHInG SOH") = "SOH WAI CHING");
   assert ((tt "bob toews") = "bob toews")
 
@@ -86,6 +86,9 @@ let test_time_range() =
   assert( check_not_in_range "2022-3-19" = true )
 
 
+let test_clean_name() =
+  assert( clean_name "jason1 larson" = "JASON LARSON")
+
 let () = test_date();
          test1();
          test2();
@@ -95,7 +98,8 @@ let () = test_date();
          test_translate();
          test_is_foreign();
          test_dedupe_athletes();
-         test_time_range()
+         test_time_range();
+         test_clean_name()
 
 
 

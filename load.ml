@@ -42,7 +42,7 @@ let string_to_gender_and_foreign str =
       | _   -> string_to_gender str
   with _ -> None
 
-let comma_regex = (Str.regexp ",")
+let comma_regex = Str.regexp ","
 let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
 
 let file_to_strings filename =
@@ -60,7 +60,7 @@ let load_name_translator () =
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
     match translation with
       | None -> name
-      | Some (_,translated) -> translated )
+      | Some (_,translated) -> String.uppercase_ascii translated )
 
 let translator = load_name_translator()
 
@@ -72,14 +72,21 @@ let load_foreign_lookup () =
 
 let foreign_lookup = load_foreign_lookup()
 
-let line_to_athlete (position, points) split_line =
+(* todo: what if there are 2 spaces in the middle of a name? *)
+let digits = Str.regexp "[0-9]"
+let clean_name name_str =
+  String.uppercase_ascii name_str |>
+  translator |>
+  Str.global_replace digits ""
+
+let line_to_athlete (place, points) split_line =
   try
     let column idx = List.nth split_line idx in
     let gender_option = string_to_gender_and_foreign (column 3) and
       age = string_to_int_option (column 2)  in
-    let fixed_name:string = String.uppercase_ascii (translator (column 1)) in
+    let name = clean_name (column 1) in
       match gender_option with
-        | Some(gender) -> List.to_seq [{name = fixed_name ; sex = gender ; age = age ; foreign = foreign_lookup fixed_name; place = position; points = points}]
+        | Some(sex) -> List.to_seq [{name ; sex ;  age ; foreign = foreign_lookup name; place ; points }]
         | None     -> Seq.empty
   with _ -> Seq.empty
 
@@ -118,13 +125,6 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let date_not_in_range now date  =
-  let (fsecs, _) = Unix.mktime date in
-  let race_secs = (int_of_float fsecs) in
-    race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
-
-let now_msecs = int_of_float (Unix.time ())
-
 let race_list_to_strings lines skip_race_for_date =
   let first_4 = List.of_seq (Seq.take 4 lines) in
   match first_4 with
@@ -132,7 +132,7 @@ let race_list_to_strings lines skip_race_for_date =
     Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
     if skip_race_for_date header.date then begin
-      Printf.printf "Too old, skipping...\n";
+      Printf.printf "Too old,（ ・(ｪ)・ ） skipping...\n";
       Seq.empty
       end
     else

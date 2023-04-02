@@ -15,10 +15,17 @@ let compare_athletes a1 a2 =
 let sort_athletes results =
    List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
 
+let now_msecs = int_of_float (Unix.time ())
+
+let date_not_in_range now date  =
+  let (fsecs, _) = Unix.mktime date in
+  let race_secs = (int_of_float fsecs) in
+    race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
+
 let load_races_into_chunked_athletes () =
   let files = dir_contents data_directory in
   let date_not_ok = date_not_in_range now_msecs in
-  let results = List.of_seq ( Seq.concat_map (read_a_race date_not_ok) files)  in
+  let results = List.of_seq (Seq.concat_map (read_a_race date_not_ok) files)  in
   let sorted_results = sort_athletes results in
   sorted_results
 
@@ -48,21 +55,23 @@ let group_athletes alist =
         else grouper rest [a] (acc::out) in
  grouper alist [] []
 
-
 let compare_packets packet1 packet2 = Num.compare_num packet2.athlete.points packet1.athlete.points
 
-let intZero = (Int 0)
-let scored_points results =
-   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero (Seq.take 5 (List.to_seq results))
+let intZero = Int 0
+
+let scored_points sorted =
+   List.to_seq sorted |>
+   Seq.take 5 |>
+   Seq.fold_left (fun x y -> x +/ y.athlete.points) intZero
 
 type results_row = { name : string; points : num; packets : athlete_packet list; age : string}
 
 let athlete_to_to_results_row packets =
   let sorted = List.sort compare_packets packets in
   let scored_points = scored_points sorted in
-  let first = (List.hd packets) in
-  let name = first.athlete.name and
-      age  = first.athlete.age in
+  let first = (List.hd packets).athlete in
+  let name = first.name and
+      age  = first.age in
   {name = name; points = scored_points; packets = sorted ; age = age_option_to_string age}
 
 let compare_rr results_row_1 results_row_2 = Num.compare_num results_row_2.points results_row_1.points
@@ -86,7 +95,7 @@ let print_header out filters_used =
 
 let compare_header_and_rank packet1 packet2 =
   let headercmp = String.compare packet1.header.race_name packet2.header.race_name in
-  if headercmp <> 0 then headercmp else  packet1.athlete.place - packet2.athlete.place
+  if headercmp <> 0 then headercmp else packet1.athlete.place - packet2.athlete.place
 
 let re_score_packet packet score =
   let new_athlete = { packet.athlete with points = score } in
@@ -121,9 +130,9 @@ let print_ranked_athletes filtered =
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   print_header handle filtered.filters;
   out "<table border=2>";
-  List.iteri (fun i (row:results_row)-> (* why is this type not inferred *)
+  List.iteri (fun index row->
       out "<tr>";
-      Printf.fprintf handle "<td>%d</td>" (i+1);
+      Printf.fprintf handle "<td>%d</td>" (index+1);
       Printf.fprintf handle "<td>%s <br> %s <br> %f</td>" row.name row.age (Num.float_of_num row.points);
       List.iter (fun packet-> Printf.fprintf handle "<td> %s <br> %f</td>" packet.header.race_name (Num.float_of_num packet.athlete.points)) row.packets;
       out "</tr>\n" ) sorted_results;
