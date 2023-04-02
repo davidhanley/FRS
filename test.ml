@@ -56,7 +56,7 @@ let test_gender () =
 
 let test_translate () =
   let tt = load_name_translator() in
-  assert ((tt "dave hanley") = "david hanley");
+  assert ((tt "dave hanley") = "DAVID HANLEY");
   assert ((tt "WAI CHInG SOH") = "SOH WAI CHING");
   assert ((tt "bob toews") = "bob toews")
 

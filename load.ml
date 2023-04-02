@@ -42,7 +42,7 @@ let string_to_gender_and_foreign str =
       | _   -> string_to_gender str
   with _ -> None
 
-let comma_regex = (Str.regexp ",")
+let comma_regex = Str.regexp ","
 let split_on_commas str = Str.split_delim comma_regex str |> List.map String.trim
 
 let file_to_strings filename =
@@ -125,13 +125,6 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let date_not_in_range now date  =
-  let (fsecs, _) = Unix.mktime date in
-  let race_secs = (int_of_float fsecs) in
-    race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
-
-let now_msecs = int_of_float (Unix.time ())
-
 let race_list_to_strings lines skip_race_for_date =
   let first_4 = List.of_seq (Seq.take 4 lines) in
   match first_4 with
@@ -139,7 +132,7 @@ let race_list_to_strings lines skip_race_for_date =
     Printf.printf "%s\n%s\n%s\n" name date points;
     let header = parse_header name date points in
     if skip_race_for_date header.date then begin
-      Printf.printf "Too old, skipping...\n";
+      Printf.printf "Too old,（ ・(ｪ)・ ） skipping...\n";
       Seq.empty
       end
     else
