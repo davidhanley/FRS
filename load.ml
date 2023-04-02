@@ -96,12 +96,12 @@ let string_to_date str =
   let n i = List.nth parts i in
   { tm_year = (n 0)-1900; tm_mon = (n 1)-1 ; tm_mday = n 2 ; tm_sec = 0 ; tm_min = 0 ; tm_hour = 0 ; tm_wday = 0 ; tm_yday = 0 ; tm_isdst = false }
 
-type race_header = { race_name : string; date : tm; points : int }
+type race_header = { race_name : string; date : tm; points : int; filename: string}
 
-let parse_header name date_string points_string =
-  let d2 = string_to_date date_string and
-      p = int_of_string  points_string in
-    { race_name = name ; date = d2 ; points = p }
+let parse_header race_name date_string points_string filename =
+  let date = string_to_date date_string and
+      points = int_of_string points_string in
+    { race_name; date; points; filename }
 
 (* because we add up a lot of small numbers with a lot of decimals, don't use floats.  Scores
    are rationals, so keep them as such.  Just convert to a float at the end for printing *)
@@ -125,12 +125,12 @@ let read_athletes lines base_points =
 
 type athlete_packet = { athlete: athlete; header: race_header }
 
-let race_list_to_strings lines skip_race_for_date =
+let race_list_to_strings lines skip_race_for_date filename =
   let first_4 = List.of_seq (Seq.take 4 lines) in
   match first_4 with
   | (name::_)::(date::_)::_::(points::_)::_ ->
     Printf.printf "%s\n%s\n%s\n" name date points;
-    let header = parse_header name date points in
+    let header = parse_header name date points filename in
     if skip_race_for_date header.date then begin
       Printf.printf "Too old,（ ・(ｪ)・ ） skipping...\n";
       Seq.empty
@@ -143,4 +143,4 @@ let race_list_to_strings lines skip_race_for_date =
 let read_a_race date_not_ok filename  =
   Printf.printf "Reading.. %s\n" filename;
   let lines = file_to_strings filename in
-  race_list_to_strings lines date_not_ok
+  race_list_to_strings lines date_not_ok filename
