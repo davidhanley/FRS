@@ -155,16 +155,16 @@ let output_race_list headers =
   let sorted_headers:race_header list =
     List.sort (fun h1 h2->(unix_time_to_int_time h2.date) - (unix_time_to_int_time h1.date)) headers in
   let out = Printf.fprintf handle in
-  out "<ul>\n";
+  out "<table>\n";
   List.iter (fun f->
-      Printf.fprintf handle "<li><a href=\"https://github.com/davidhanley/TowerRunningRaceData/blob/main/%s\">%s %d-%d-%d points:%d </a></li>\n"
+      Printf.fprintf handle "<tr><td><a href=\"https://github.com/davidhanley/TowerRunningRaceData/blob/main/%s\">%s</a></td> <td>%d-%d-%d</td> <td>%d</td> </tr>\n"
           (List.nth (Str.split (Str.regexp "/") f.filename) 1)
           f.race_name
           (f.date.tm_mon+1)
           f.date.tm_mday
           (f.date.tm_year+1900)
           (f.points) ) sorted_headers;
-  out "</ul>\n";
+  out "</table>\n";
   close_out_noerr handle
 
 
