@@ -18,6 +18,8 @@ let dir_contents dir =
   in
     List.to_seq (List.filter (String.ends_with ~suffix:".csv") (loop [] [dir]))
 
+type foo = Bar(Int) | Baz(String)
+
 type gender = M | F
 
 type athlete = { name : string ; sex : gender ; age : int option ; foreign: bool; place: int; points: num}

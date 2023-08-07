@@ -13,16 +13,17 @@ let compare_athletes a1 a2 =
     | (Some(age1), Some(age2)) -> age1-age2
 
 let sort_athletes results =
-   List.sort (fun a1 a2-> compare_athletes a1.athlete a2.athlete) results
+   List.sort (fun a1 a2->compare_athletes a1.athlete a2.athlete) results
 
-let now_msecs = int_of_float (Unix.time ())
+let unix_time_to_int_time date =
+  let (fsecs, _) = Unix.mktime date in
+  int_of_float fsecs
 
 let date_not_in_range now date  =
-  let (fsecs, _) = Unix.mktime date in
-  let race_secs = (int_of_float fsecs) in
+  let race_secs = unix_time_to_int_time date in
     race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
 
-let load_races_into_chunked_athletes () =
+let load_races_into_chunked_athletes now_msecs =
   let files = dir_contents data_directory in
   let date_not_ok = date_not_in_range now_msecs in
   let races_read = Seq.map (read_a_race date_not_ok) files in
@@ -135,6 +136,7 @@ let print_ranked_athletes filtered =
   let results_rows = List.map athlete_to_to_results_row (flatten_and_sort_races filtered.packets (fun x->x)) in
   let sorted_results:results_row list = List.sort compare_rr results_rows in
   print_header handle filtered.filters;
+  out "<br><br><a href=\"races.html\">Races Considered</a><br><br>";
   out "<table border=2>";
   List.iteri (fun index row->
       out "<tr>";
@@ -150,15 +152,25 @@ let apply_scoring filtered =
 
 let output_race_list headers =
   let handle = open_out "content/races.html" in
+  let sorted_headers:race_header list =
+    List.sort (fun h1 h2->(unix_time_to_int_time h2.date) - (unix_time_to_int_time h1.date)) headers in
   let out = Printf.fprintf handle in
-  out "<ul>\n";
-  List.iter (fun f->Printf.fprintf handle "<li>%s</li>\n" f.race_name) headers;
-  out "</ul>\n";
+  out "<table>\n";
+  List.iter (fun f->
+      Printf.fprintf handle "<tr><td><a href=\"https://github.com/davidhanley/TowerRunningRaceData/blob/main/%s\">%s</a></td> <td>%d-%d-%d</td> <td>%d</td> </tr>\n"
+          (List.nth (Str.split (Str.regexp "/") f.filename) 1)
+          f.race_name
+          (f.date.tm_mon+1)
+          f.date.tm_mday
+          (f.date.tm_year+1900)
+          (f.points) ) sorted_headers;
+  out "</table>\n";
   close_out_noerr handle
 
 
 let main() =
-  let (races, headers) = load_races_into_chunked_athletes () in
+  let curr_time = int_of_float (Unix.time ()) in
+  let (races, headers) = load_races_into_chunked_athletes curr_time in
   output_race_list headers;
   group_athletes races |>
   apply_filters_to_grouped_athlete_packets apply_scoring |>
