@@ -21,7 +21,7 @@ let unix_time_to_int_time date =
 
 let date_not_in_range now date  =
   let race_secs = unix_time_to_int_time date in
-    race_secs + 365 * 24 * 60 * 60 < now (* || secs > now *)
+    race_secs + 31536000 < now || race_secs > now + 24 * 60 * 60
 
 let load_races_into_chunked_athletes now_msecs =
   let files = dir_contents data_directory in
@@ -169,7 +169,7 @@ let output_race_list headers =
 
 
 let main() =
-  let curr_time = int_of_float (Unix.time ()) in
+  let curr_time = (int_of_float (Unix.time ())) (* -365*24*60*60*) in
   let (races, headers) = load_races_into_chunked_athletes curr_time in
   output_race_list headers;
   group_athletes races |>
