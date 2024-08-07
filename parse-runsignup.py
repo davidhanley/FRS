@@ -11,7 +11,7 @@ for i in range(len(lines)):
     name = lines[i-2]+" "+lines[i-1]
     gender = line[0]
     age = line[2]
-    time = line[3]
+    time = line[-2]
 
     print(",".join(["",name,age,gender,time]))
 
