@@ -169,7 +169,7 @@ let output_race_list headers =
 
 
 let main() =
-  let curr_time = (int_of_float (Unix.time ())) (* -365*24*60*60*) in
+  let curr_time = (int_of_float (Unix.time ())) in
   let (races, headers) = load_races_into_chunked_athletes curr_time in
   output_race_list headers;
   group_athletes races |>
