@@ -50,14 +50,16 @@ let file_to_strings filename =
   let lines = Seq.of_dispenser (fun () ->
                                  try Some(List.map String.trim (split_on_commas (input_line inf)))
                                  with _ -> None ) in
-  lines
+  (lines,inf)
 
 let data_directory = "TowerRunningRaceData/"
 
 let load_name_translator () =
-  let lines = List.of_seq (file_to_strings (data_directory ^ "translate.dat")) in
+  let (llines,inf) = (file_to_strings (data_directory ^ "translate.dat")) in
+  let lines = List.of_seq llines in
   let translate_table = List.map (fun pv->Str.regexp_case_fold (List.nth pv 0),List.nth pv 1) lines in
   (fun name -> let translation = List.find_opt (fun (p,_)->Str.string_match p name 0) translate_table in
+    close_in inf;
     match translation with
       | None -> name
       | Some (_,translated) -> String.uppercase_ascii translated )
@@ -65,9 +67,11 @@ let load_name_translator () =
 let translator = load_name_translator()
 
 let load_foreign_lookup () =
-  let lines = List.map List.hd (List.of_seq (file_to_strings (data_directory ^ "foreign.dat"))) in
+  let (llines,inf) = (file_to_strings (data_directory ^ "foreign.dat")) in
+  let lines = List.map List.hd (List.of_seq llines) in
   let upcased_lines = List.map String.uppercase_ascii lines in
   let stringset = StringSet.of_seq (List.to_seq upcased_lines) in
+  close_in inf;
   fun str->StringSet.mem (String.uppercase_ascii str) stringset
 
 let foreign_lookup = load_foreign_lookup()
@@ -142,5 +146,7 @@ let race_list_to_strings lines skip_race_for_date filename =
 
 let read_a_race date_not_ok filename  =
   Printf.printf "Reading.. %s\n" filename;
-  let lines = file_to_strings filename in
-  race_list_to_strings lines date_not_ok filename
+  let (lines,inf) = file_to_strings filename in
+  let race_data = race_list_to_strings lines date_not_ok filename in
+  close_in inf;
+  race_data
